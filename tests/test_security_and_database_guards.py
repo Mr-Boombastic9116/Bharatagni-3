@@ -135,3 +135,37 @@ def test_password_verification_legitimate_bcrypt_hashes():
     assert verify_password("", test_hash) is False
     assert verify_password(test_pass, "") is False
 
+def test_sqlite_path_resolution_and_parent_dir():
+    """Verify relative SQLITE_DATABASE_PATH resolves accurately against project root and creates parent dir."""
+    custom = Settings()
+    custom.DB_TYPE = "sqlite"
+    custom.SQLITE_DATABASE_PATH = "database/bharatagri.db"
+    
+    resolved = custom.resolved_sqlite_path
+    assert resolved.endswith("database/bharatagri.db")
+    assert Path(resolved).is_absolute()
+    
+    url = custom.DATABASE_URL
+    assert url.startswith("sqlite:///")
+    assert url.endswith("database/bharatagri.db")
+
+def test_sqlite_database_url_normalization():
+    """Verify explicit sqlite DATABASE_URL is normalized with absolute path."""
+    orig_db_url = os.environ.get("DATABASE_URL")
+    try:
+        os.environ["DATABASE_URL"] = "sqlite:///database/bharatagri.db"
+        custom = Settings()
+        custom.DB_TYPE = "sqlite"
+        custom.SQLITE_DATABASE_PATH = ""
+        
+        url = custom.DATABASE_URL
+        assert url.startswith("sqlite:///")
+        assert "database/bharatagri.db" in url
+        assert Path(custom.resolved_sqlite_path).is_absolute()
+    finally:
+        if orig_db_url:
+            os.environ["DATABASE_URL"] = orig_db_url
+        else:
+            os.environ.pop("DATABASE_URL", None)
+
+

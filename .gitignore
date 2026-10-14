@@ -44,7 +44,7 @@ backend/uploads/mango_inspections/
 *.log
 *.bak
 
-# Databases and SQL Dumps containing sensitive production data
+# Databases and SQL Dumps
 *.db
 *.db-shm
 *.db-wal
@@ -53,3 +53,6 @@ backend/uploads/mango_inspections/
 database/*.db
 database/*.sql
 database/*.bak
+
+# Allow SQLite prototype database for Render deployment
+!database/bharatagri.db

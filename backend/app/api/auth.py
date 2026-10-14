@@ -59,7 +59,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         logger.error(f"[Auth] Database connection or query error during login for '{clean_uid}': {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database service is unavailable. Please verify MySQL is running and the database has been imported."
+            detail=f"Database service is unavailable ({settings.DB_TYPE}). Please verify database is initialized and server logs for details."
         )
 
     if not user:

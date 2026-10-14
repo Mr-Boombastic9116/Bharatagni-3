@@ -197,6 +197,6 @@ async def serve_spa_fallback(full_path: str):
 def startup_event():
     db_ok = check_db_connection()
     if db_ok:
-        logger.info(f"[Startup] Connected to database ({settings.DB_TYPE}) successfully ({settings.sanitized_database_url}).")
+        logger.info(f"[Startup] Connected to database ({settings.DB_TYPE}) successfully: {settings.sanitized_database_url}")
     else:
-        logger.warning(f"[Startup] Database ({settings.DB_TYPE}) connection failed ({settings.sanitized_database_url}).")
+        logger.error(f"[Startup] Database ({settings.DB_TYPE}) connection check failed for {settings.sanitized_database_url}. Inspect logs above for specific diagnostic error.")

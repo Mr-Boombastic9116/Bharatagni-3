@@ -1,10 +1,13 @@
 import os
 import sqlite3
 import urllib.parse
+import logging
 from pathlib import Path
 from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from backend.app.core.config import settings
+
+logger = logging.getLogger("backend.app.core.database")
 
 Base = declarative_base()
 
@@ -54,17 +57,25 @@ def get_db():
 
 def check_db_health() -> bool:
     if engine is None:
+        logger.error(f"[HealthCheck] SQLAlchemy engine is not initialized for {settings.sanitized_database_url}")
         return False
     if settings.is_sqlite:
         sqlite_file = Path(settings.resolved_sqlite_path)
-        if not sqlite_file.exists() or sqlite_file.stat().st_size == 0:
+        if not sqlite_file.exists():
+            logger.error(f"[HealthCheck] SQLite database file not found at: {sqlite_file.as_posix()}")
+            return False
+        if sqlite_file.stat().st_size == 0:
+            logger.error(f"[HealthCheck] SQLite database file is empty (0 bytes) at: {sqlite_file.as_posix()}")
             return False
         try:
             with engine.connect() as conn:
                 res = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")).fetchone()
-                return res is not None
+                if res is None:
+                    logger.error(f"[HealthCheck] 'users' table missing in SQLite database: {sqlite_file.as_posix()}")
+                    return False
+                return True
         except Exception as e:
-            print(f"[HealthCheck] SQLite table check failed: {e}")
+            logger.error(f"[HealthCheck] SQLite table verification query failed on {sqlite_file.as_posix()}: {e}", exc_info=True)
             return False
 
     try:
@@ -72,7 +83,7 @@ def check_db_health() -> bool:
             conn.execute(text("SELECT 1"))
         return True
     except Exception as e:
-        print(f"[HealthCheck] Database connection check failed for {settings.sanitized_database_url}: {e}")
+        logger.error(f"[HealthCheck] Database connection check failed for {settings.sanitized_database_url}: {e}", exc_info=True)
         return False
 
 check_db_connection = check_db_health
@@ -90,24 +101,29 @@ def check_database_status() -> int:
     if settings.is_sqlite:
         db_path = Path(settings.resolved_sqlite_path)
         if not db_path.exists():
-            print(f"[Warning] SQLite database file not found at {db_path}")
+            print(f"[Error] SQLite database file not found at: {db_path.as_posix()}")
             return 2
+        if db_path.stat().st_size == 0:
+            print(f"[Error] SQLite database file is empty (0 bytes) at: {db_path.as_posix()}")
+            return 3
         try:
             conn = sqlite3.connect(db_path.as_posix(), timeout=5)
             cur = conn.cursor()
             cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
             if not cur.fetchone():
+                print(f"[Error] 'users' table missing in SQLite database: {db_path.as_posix()}")
                 conn.close()
                 return 3
             cur.execute("SELECT COUNT(*) FROM users")
             user_count = cur.fetchone()[0]
             conn.close()
             if user_count == 0:
+                print(f"[Error] SQLite database contains 0 users: {db_path.as_posix()}")
                 return 3
-            print(f"[OK] SQLite database '{db_path.name}' verified ({user_count} users preserved).")
+            print(f"[OK] SQLite database '{db_path.name}' verified ({user_count} users preserved at {db_path.as_posix()}).")
             return 0
         except Exception as e:
-            print(f"[Error] SQLite database verification failed: {e}")
+            print(f"[Error] SQLite database verification failed on {db_path.as_posix()}: {e}")
             return 1
 
     # MySQL Verification

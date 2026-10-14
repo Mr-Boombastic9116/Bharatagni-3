@@ -71,28 +71,53 @@ class Settings:
 
     @property
     def resolved_sqlite_path(self) -> str:
-        if self.SQLITE_DATABASE_PATH:
-            return Path(self.SQLITE_DATABASE_PATH).resolve().as_posix()
-        default_db = root_dir / "database" / "bharatagri.db"
-        return default_db.resolve().as_posix()
+        raw_path = (self.SQLITE_DATABASE_PATH or "").strip()
+        if raw_path:
+            p = Path(raw_path)
+            if not p.is_absolute():
+                p = (root_dir / p).resolve()
+            else:
+                p = p.resolve()
+        else:
+            p = (root_dir / "database" / "bharatagri.db").resolve()
+        return p.as_posix()
 
     @property
     def DATABASE_URL(self) -> str:
-        # 1. Direct DATABASE_URL environment variable has highest precedence
-        env_url = os.getenv("DATABASE_URL")
+        # If DB_TYPE is explicitly 'sqlite' or SQLITE_DATABASE_PATH is provided:
+        if self.DB_TYPE == "sqlite" or self.SQLITE_DATABASE_PATH:
+            env_url = (os.getenv("DATABASE_URL") or "").strip()
+            # If an explicit SQLite DATABASE_URL was provided, resolve its path accurately
+            if env_url.startswith("sqlite"):
+                raw = env_url
+                for prefix in ("sqlite:///", "sqlite://"):
+                    if raw.startswith(prefix):
+                        raw = raw[len(prefix):]
+                        break
+                if raw:
+                    p = Path(raw)
+                    if not p.is_absolute():
+                        p = (root_dir / p).resolve()
+                    else:
+                        p = p.resolve()
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    return f"sqlite:///{p.as_posix()}"
+
+            # Use resolved_sqlite_path and ensure its parent directory exists
+            p = Path(self.resolved_sqlite_path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            return f"sqlite:///{p.as_posix()}"
+
+        # Otherwise, MySQL mode: check DATABASE_URL first
+        env_url = (os.getenv("DATABASE_URL") or "").strip()
         if env_url:
-            env_url = env_url.strip()
             if env_url.startswith("mysql://"):
                 return "mysql+pymysql://" + env_url[len("mysql://"):]
             elif env_url.startswith("mysql2://"):
                 return "mysql+pymysql://" + env_url[len("mysql2://"):]
             return env_url
 
-        # 2. If SQLITE_DATABASE_PATH is set or DB_TYPE is sqlite, use SQLite
-        if self.SQLITE_DATABASE_PATH or self.DB_TYPE == "sqlite":
-            return f"sqlite:///{self.resolved_sqlite_path}"
-
-        # 3. Otherwise build MySQL URL from discrete parameters
+        # Otherwise build MySQL URL from discrete parameters
         from urllib.parse import quote_plus
         user = quote_plus(self.DB_USER) if self.DB_USER else ""
         pw = f":{quote_plus(self.DB_PASSWORD)}" if self.DB_PASSWORD else ""
@@ -102,7 +127,8 @@ class Settings:
     def sanitized_database_url(self) -> str:
         url = self.DATABASE_URL
         if url.startswith("sqlite"):
-            return f"sqlite:///{Path(self.resolved_sqlite_path).name}"
+            # Expose the full resolved SQLite URL in logs so the exact file path is transparent
+            return url
         if "://" in url:
             proto, rest = url.split("://", 1)
             if "@" in rest:
