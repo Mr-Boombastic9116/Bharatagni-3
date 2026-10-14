@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-5.3-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0%20%7C%20MariaDB-4479A1.svg?logo=mysql&logoColor=white)](https://www.mysql.com)
+[![Database](https://img.shields.io/badge/Database-SQLite%203%20%7C%20MySQL%208.0-4479A1.svg?logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com)
 [![Render](https://img.shields.io/badge/Deploy-Render-46E3B7.svg?logo=render&logoColor=white)](https://render.com)
 
@@ -214,15 +214,26 @@ Copy the template to `.env`:
 ```bash
 cp .env.example .env
 ```
-Ensure `.env` matches your local MySQL server (default for local XAMPP):
+Configure `.env` for either SQLite (recommended for prototype) or MySQL:
+
+**Option A: SQLite Mode (Self-Contained Prototype)**
 ```ini
+DB_TYPE=sqlite
+SQLITE_DATABASE_PATH=database/bharatagri.db
+PORT=5000
+# SECRET_KEY=  (Leave unset in dev for dynamic ephemeral secret, or set via openssl rand -hex 32)
+```
+
+**Option B: MySQL Mode (External / Local XAMPP)**
+```ini
+DB_TYPE=mysql
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=bharatagri_iteration2
-SECRET_KEY=bharatagri_secure_jwt_secret_key_2026_iteration2
 PORT=5000
+# SECRET_KEY=
 ```
 
 ### Step 3: Install Backend Dependencies
@@ -246,11 +257,12 @@ cd ..
 ### Step 5: Verify Database Connection Safely
 Run the non-destructive verification tool to confirm database connectivity:
 ```bash
-python -c "import sys; from backend.app.core.database import check_mysql_status; sys.exit(check_mysql_status())"
+python -c "import sys; from backend.app.core.database import check_database_status; sys.exit(check_database_status())"
 ```
-*Expected output: `[OK] Database 'bharatagri_iteration2' verified on localhost:3306 (5052 users preserved).`*
+*Expected output for SQLite: `[OK] SQLite database 'bharatagri.db' verified (5052 users preserved).`*  
+*Expected output for MySQL: `[OK] MySQL database 'bharatagri_iteration2' verified on localhost:3306 (5052 users preserved).`*
 
-> **DO NOT** run database creation or migration scripts against an existing database.
+> **DO NOT** run database creation or migration scripts against an existing production database. To migrate records between MySQL and SQLite, use the standalone utility: `python scripts/migrate_mysql_to_sqlite.py`.
 
 ### Step 6: Start Application Services
 You can run both servers simultaneously using the safe startup script:
@@ -276,14 +288,17 @@ Open `http://localhost:3000` in your web browser. API documentation is available
 | Variable Name | Required Locally | Required on Render | Default Value | Description |
 |---------------|------------------|--------------------|---------------|-------------|
 | `PORT` | No | Yes (Auto) | `5000` | Port for web server traffic. |
-| `DATABASE_URL` | Optional | Optional | *None* | Complete connection string (e.g., `mysql+pymysql://user:pass@host:port/db?charset=utf8mb4`). Overrides individual `DB_*` settings. |
-| `DB_HOST` | Yes | Yes (if no URL) | `localhost` | Hostname of MySQL database server. |
+| `DB_TYPE` | No | Yes | `sqlite` | Database engine selection (`sqlite` or `mysql`). |
+| `SQLITE_DATABASE_PATH` | No | Optional | `database/bharatagri.db` | Path to SQLite database file. |
+| `EVIDENCE_UPLOAD_DIR` | No | Optional | `backend/uploads/evidence` | Storage directory for photographic evidence. |
+| `DATABASE_URL` | Optional | Optional | *None* | MySQL connection string (e.g., `mysql+pymysql://user:pass@host:port/db`). Used when `DB_TYPE=mysql`. |
+| `DB_HOST` | Only for MySQL | Only for MySQL | `localhost` | Hostname of MySQL database server. |
 | `DB_PORT` | No | No | `3306` | Port of MySQL database server. |
-| `DB_USER` | Yes | Yes (if no URL) | `root` | Database username. |
-| `DB_PASSWORD` | No | Yes (if no URL) | *(empty)* | Database password. |
-| `DB_NAME` | Yes | Yes (if no URL) | `bharatagri_iteration2` | Database schema name. |
-| `DB_SSL_DISABLED` | No | No | `false` | Set to `true` only for non-SSL development connections. |
-| `SECRET_KEY` | Yes | Yes | `bharatagri_secure_...` | 64-character secret for signing JWT tokens. |
+| `DB_USER` | Only for MySQL | Only for MySQL | `root` | MySQL username. |
+| `DB_PASSWORD` | No | Only for MySQL | *(empty)* | MySQL password. |
+| `DB_NAME` | Only for MySQL | Only for MySQL | `bharatagri_iteration2` | MySQL database schema name. |
+| `DB_SSL_DISABLED` | No | No | `false` | Set to `true` only for non-SSL MySQL development connections. |
+| `SECRET_KEY` | Optional in dev | **Required in prod** | *(Dynamic in dev)* | Cryptographically strong secret for signing JWT tokens. In production, provide via environment variable. |
 | `ALGORITHM` | No | No | `HS256` | JWT signing algorithm. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | No | `1440` | JWT token validity window (in minutes). |
 | `ALLOWED_ORIGINS` | No | Yes (Split only) | `http://localhost:3000...` | Permitted CORS origins (comma-separated or `*`). |
@@ -369,31 +384,50 @@ FastAPI automatically generates interactive, OpenAPI-compliant documentation:
 
 ## 12. Render Deployment Guide
 
-### Recommended: Option 1 — Unified Web Service (Docker)
-Deploys the entire platform as a single Render Web Service on the **Free tier**.
+### Deployment Architecture Options
+
+BharatAgri-3 supports two database configurations on Render:
+
+#### Architecture A: Self-Contained SQLite Prototype (Zero Cost, No External DB)
+- **Service Plan**: Render Web Service (`Free` plan).
+- **Database**: Runs locally inside the container from `/app/database/bharatagri.db` (seeded with all 58 tables and 176,856 verified records).
+- > [!WARNING]
+  > **CRITICAL PERSISTENCE LIMITATION**: On Render's Free tier, the filesystem is **ephemeral**. All reads of pre-seeded accounts, centres, and historical records work reliably. However, newly created appointments, procurement transactions, or uploaded evidence photos **do NOT persist** across container restarts, idle spin-downs, or new code deployments.
+- **For Durable Persistence on Render**:
+  - Requires upgrading to a paid **Starter** plan ($7/month).
+  - Attach a **Persistent Disk** mounted at `/data` (1 GB).
+  - Set `SQLITE_DATABASE_PATH: /data/bharatagri.db` and `EVIDENCE_UPLOAD_DIR: /data/uploads/evidence`.
+  - Copy the seed database into `/data/bharatagri.db` on first deployment.
+
+#### Architecture B: External Managed MySQL (Durable External DB)
+- Set `DB_TYPE=mysql` and provide connection credentials (`DATABASE_URL` or discrete `DB_*` variables).
+- Connects directly to external cloud MySQL (e.g., Aiven, TiDB Cloud, AWS RDS). All writes persist externally.
+
+### Step-by-Step Render Deployment (Option 1: Unified Docker Service)
 
 1. **Push to your GitHub repository**:
    ```bash
-   git remote add origin https://github.com/Mr-Boombastic9116/BharatAgri-3.git
+   git remote add origin https://github.com/<your-username>/BharatAgri-3.git
    git push -u origin main
    ```
 2. **Create New Web Service on Render**:
    - Navigate to [Render Dashboard](https://dashboard.render.com) -> **New +** -> **Web Service**.
-   - Select your repository `BharatAgri-3`.
-   - **Environment**: Select `Docker`.
-   - **Dockerfile Path**: `Dockerfile`.
-   - **Plan**: `Free`.
-   - **Health Check Path**: `/api/health`.
-3. **Set Environment Variables**:
-   - `DATABASE_URL`: `mysql+pymysql://<user>:<password>@<host>:<port>/bharatagri_iteration2?charset=utf8mb4` *(from your external MySQL provider)*.
-   - `SECRET_KEY`: Generate a random 64-character secret.
-   - `DB_SSL_DISABLED`: `false`.
-   - `ALLOWED_ORIGINS`: `*`.
+   - Connect your GitHub repository `BharatAgri-3`.
+   - **Environment**: `Docker`
+   - **Dockerfile Path**: `Dockerfile`
+   - **Plan**: `Free` (or `Starter` if attaching a persistent disk)
+   - **Health Check Path**: `/api/health`
+3. **Configure Environment Variables**:
+   - `DB_TYPE`: `sqlite`
+   - `SQLITE_DATABASE_PATH`: `/app/database/bharatagri.db`
+   - `EVIDENCE_UPLOAD_DIR`: `/app/backend/uploads/evidence`
+   - `SECRET_KEY`: Click **Generate** (Render will inject a cryptographically secure random string).
+   - `ALLOWED_ORIGINS`: `*`
 4. **Deploy**:
-   - Render automatically builds the React frontend in Stage 1 and boots the FastAPI server in Stage 2.
-   - Your public URL will be live at `https://bharatagri-3.onrender.com`.
+   - Render automatically compiles the React frontend in Stage 1 and boots the FastAPI application in Stage 2.
+   - Access your live prototype at `https://bharatagri-3.onrender.com`.
 
-For detailed instructions and split-service setup, see [docs/DEPLOYMENT.md](file:///c:/Users/test/Desktop/Bharatagri%203/BharatAgri-main/BharatAgri-main/docs/DEPLOYMENT.md).
+For full deployment details and split-service alternatives, consult [docs/DEPLOYMENT.md](file:///c:/Users/test/Desktop/Bharatagri%203/BharatAgri-main/BharatAgri-main/docs/DEPLOYMENT.md).
 
 ---
 

@@ -41,3 +41,13 @@ backend/uploads/mango_inspections/
 *.swo
 *.log
 *.bak
+
+# Databases and SQL Dumps containing sensitive production data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+database/*.db
+database/*.sql
+database/*.bak

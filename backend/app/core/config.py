@@ -28,7 +28,37 @@ class Settings:
     DB_SSL_CA: str = os.getenv("DB_SSL_CA", "")
     DB_SSL_DISABLED: bool = os.getenv("DB_SSL_DISABLED", "").lower() in ("true", "1", "yes")
 
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "bharatagri_secure_jwt_secret_key_2026_iteration2")
+    # Environment mode: 'production', 'development', or 'test'
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.getenv("RENDER") else "development").lower()
+
+    _INSECURE_SECRETS = {
+        "bharatagri_secure_jwt_secret_key_2026_iteration2",
+        "your_secure_jwt_random_secret_key_change_in_production",
+        "secret",
+        "change_me",
+        "default_secret"
+    }
+
+    @property
+    def SECRET_KEY(self) -> str:
+        env_secret = os.getenv("SECRET_KEY", "").strip()
+        if self.ENVIRONMENT == "production":
+            if not env_secret or env_secret in self._INSECURE_SECRETS or len(env_secret) < 32:
+                raise RuntimeError(
+                    "Production security violation: SECRET_KEY is missing, too short (<32 chars), or using an insecure default. "
+                    "You must supply a strong SECRET_KEY in production environment variables (e.g., Render 'generateValue: true' or 'openssl rand -hex 32')."
+                )
+            return env_secret
+        
+        # Development / Test mode
+        if env_secret and env_secret not in self._INSECURE_SECRETS:
+            return env_secret
+        
+        if not hasattr(self, "_ephemeral_secret"):
+            import secrets
+            self._ephemeral_secret = secrets.token_hex(32)
+        return self._ephemeral_secret
+
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
     PORT: int = int(os.getenv("PORT", 5000))

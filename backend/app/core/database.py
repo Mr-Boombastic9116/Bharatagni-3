@@ -55,6 +55,18 @@ def get_db():
 def check_db_health() -> bool:
     if engine is None:
         return False
+    if settings.is_sqlite:
+        sqlite_file = Path(settings.resolved_sqlite_path)
+        if not sqlite_file.exists() or sqlite_file.stat().st_size == 0:
+            return False
+        try:
+            with engine.connect() as conn:
+                res = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")).fetchone()
+                return res is not None
+        except Exception as e:
+            print(f"[HealthCheck] SQLite table check failed: {e}")
+            return False
+
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
