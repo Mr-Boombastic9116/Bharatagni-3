@@ -15,6 +15,11 @@ class Settings:
     VERSION: str = "3.0.0"
     API_V1_STR: str = "/api"
 
+    # Database Type Selection: "sqlite" (default for self-contained Render prototype) or "mysql"
+    DB_TYPE: str = os.getenv("DB_TYPE", "sqlite").lower()
+    SQLITE_DATABASE_PATH: str = os.getenv("SQLITE_DATABASE_PATH", "")
+
+    # MySQL Configuration (Retained for seamless dual-database support and rollback)
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", 3306))
     DB_USER: str = os.getenv("DB_USER", "root")
@@ -30,18 +35,34 @@ class Settings:
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")
 
     @property
+    def is_sqlite(self) -> bool:
+        url = self.DATABASE_URL
+        return url.startswith("sqlite")
+
+    @property
+    def resolved_sqlite_path(self) -> str:
+        if self.SQLITE_DATABASE_PATH:
+            return Path(self.SQLITE_DATABASE_PATH).resolve().as_posix()
+        default_db = root_dir / "database" / "bharatagri.db"
+        return default_db.resolve().as_posix()
+
+    @property
     def DATABASE_URL(self) -> str:
-        # Check direct DATABASE_URL first (standard on Render and cloud DB providers)
+        # 1. Direct DATABASE_URL environment variable has highest precedence
         env_url = os.getenv("DATABASE_URL")
         if env_url:
             env_url = env_url.strip()
-            # Normalize mysql:// or mysql2:// dialect to mysql+pymysql://
             if env_url.startswith("mysql://"):
-                env_url = "mysql+pymysql://" + env_url[len("mysql://"):]
+                return "mysql+pymysql://" + env_url[len("mysql://"):]
             elif env_url.startswith("mysql2://"):
-                env_url = "mysql+pymysql://" + env_url[len("mysql2://"):]
+                return "mysql+pymysql://" + env_url[len("mysql2://"):]
             return env_url
 
+        # 2. If SQLITE_DATABASE_PATH is set or DB_TYPE is sqlite, use SQLite
+        if self.SQLITE_DATABASE_PATH or self.DB_TYPE == "sqlite":
+            return f"sqlite:///{self.resolved_sqlite_path}"
+
+        # 3. Otherwise build MySQL URL from discrete parameters
         from urllib.parse import quote_plus
         user = quote_plus(self.DB_USER) if self.DB_USER else ""
         pw = f":{quote_plus(self.DB_PASSWORD)}" if self.DB_PASSWORD else ""
@@ -50,6 +71,8 @@ class Settings:
     @property
     def sanitized_database_url(self) -> str:
         url = self.DATABASE_URL
+        if url.startswith("sqlite"):
+            return f"sqlite:///{Path(self.resolved_sqlite_path).name}"
         if "://" in url:
             proto, rest = url.split("://", 1)
             if "@" in rest:

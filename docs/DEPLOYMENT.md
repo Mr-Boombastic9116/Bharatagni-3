@@ -18,25 +18,24 @@ BharatAgri-3 supports two deployment architectures on Render:
 
 ---
 
-## 2. External MySQL Database Setup
+## 2. Database Engines: SQLite Prototype vs External MySQL
 
-Render does not offer a free managed MySQL service. Connect your existing MySQL database or provision a managed MySQL database using an external provider:
+BharatAgri-3 features seamless **dual-engine support**:
 
-### Recommended Providers (Free Tier Available):
-- **Aiven for MySQL**: Offers free 5GB MySQL 8 with automated backups and SSL/TLS.
-- **TiDB Cloud Serverless**: 5GB free MySQL-compatible cloud database with zero maintenance.
-- **AWS RDS / Clever Cloud / Railway**: Standard MySQL hosting.
+### Mode A: Self-Contained SQLite Prototype (Default & Recommended for Render)
+- Zero external dependencies or database hosting costs.
+- The repository includes the complete 176,856-record SQLite database at `database/bharatagri.db` (58 tables).
+- **Free Tier Behavior**: SQLite runs inside the Docker container. Fast and 100% free. Any data written at runtime is **ephemeral** (resets on restart or redeployment).
+- **Persistent Disk Setup (Paid 'Starter' Plan)**:
+  - Add a Persistent Disk on Render: `mountPath: /data`, size `1GB`.
+  - Set `SQLITE_DATABASE_PATH: /data/bharatagri.db`.
+  - Set `EVIDENCE_UPLOAD_DIR: /data/uploads/evidence`.
+  - Copy the initial database to the disk on first deploy.
 
-### Crucial Data Preservation Notice:
-> If connecting to an **existing database** containing records:
-> - **DO NOT** run `bharatagri_iteration2.sql` or any import scripts.
-> - Supply the existing credentials via Render environment variables. The application will connect and preserve all existing records.
-> - The application **never** wipes, drops, or re-seeds tables on startup.
-
-If initializing a **completely new blank database** (zero existing tables):
-```bash
-mysql -h <CLOUD_HOST> -P <CLOUD_PORT> -u <CLOUD_USER> -p bharatagri_iteration2 < database/bharatagri_iteration2.sql
-```
+### Mode B: External MySQL / Cloud MySQL (Aiven, TiDB Cloud, PlanetScale, AWS RDS)
+- Set `DB_TYPE=mysql` and provide standard MySQL credentials.
+- Connects directly to external MySQL without modifying code.
+- Dual-engine fallback allows switching between SQLite and MySQL instantly via environment variables.
 
 ---
 
@@ -62,22 +61,19 @@ git push -u origin main
    - **Health Check Path**: `/api/health`
 
 ### Step 3: Configure Environment Variables
-In the Render service **Environment** tab, add the following variables:
+In the Render service **Environment** tab, configure the following variables:
 
-| Key | Example Value | Description |
-|-----|---------------|-------------|
-| `PORT` | `10000` | Port for web traffic (Render sets this automatically) |
-| `DATABASE_URL` | `mysql+pymysql://user:pass@host:port/dbname?charset=utf8mb4` | Cloud database connection string |
-| *or* `DB_HOST` | `mysql.provider.com` | Database hostname |
-| *or* `DB_PORT` | `3306` | Database port |
-| *or* `DB_USER` | `db_user` | Database username |
-| *or* `DB_PASSWORD` | `your_secret_password` | Database password |
-| *or* `DB_NAME` | `bharatagri_iteration2` | Database name |
-| `DB_SSL_DISABLED` | `false` | Enable TLS/SSL for cloud database security |
-| `SECRET_KEY` | *(Click 'Generate')* | 64-character random string for JWT signing |
-| `ALGORITHM` | `HS256` | JWT algorithm |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Token validity duration (24 hours) |
-| `ALLOWED_ORIGINS` | `*` | Allowed CORS origins |
+| Key | Value (SQLite Prototype) | Value (External MySQL) | Description |
+|-----|--------------------------|------------------------|-------------|
+| `PORT` | `10000` | `10000` | Port for web traffic (Render sets this automatically) |
+| `DB_TYPE` | `sqlite` | `mysql` | Active database engine |
+| `SQLITE_DATABASE_PATH` | `/app/database/bharatagri.db` | *(Leave unset)* | Container SQLite database path |
+| `EVIDENCE_UPLOAD_DIR` | `/app/backend/uploads/evidence` | `/app/backend/uploads/evidence` | Evidence upload storage path |
+| `DATABASE_URL` | *(Leave unset)* | `mysql+pymysql://user:pass@host:port/dbname` | MySQL connection string |
+| `SECRET_KEY` | *(Click 'Generate')* | *(Click 'Generate')* | 64-character random string for JWT signing |
+| `ALGORITHM` | `HS256` | `HS256` | JWT algorithm |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | `1440` | Token validity duration (24 hours) |
+| `ALLOWED_ORIGINS` | `*` | `*` | Allowed CORS origins |
 
 ### Step 4: Deploy & Verify
 1. Click **Create Web Service**.

@@ -35,17 +35,23 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application backend, ML models, and uploads
+# Copy application backend, ML models, and SQLite database
 COPY backend/ ./backend/
 COPY ml/ ./ml/
 COPY database/ ./database/
 
+# Ensure storage directories exist with proper write permissions
+RUN mkdir -p /app/backend/uploads/evidence /app/database
+
 # Copy built frontend assets from Stage 1 into the runtime image
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Set Python module resolution path
+# Set runtime environment variables
 ENV PYTHONPATH="/app"
 ENV PORT=10000
+ENV DB_TYPE="sqlite"
+ENV SQLITE_DATABASE_PATH="/app/database/bharatagri.db"
+ENV EVIDENCE_UPLOAD_DIR="/app/backend/uploads/evidence"
 
 # Expose standard web service port
 EXPOSE 10000

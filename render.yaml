@@ -19,22 +19,29 @@ services:
     envVars:
       - key: PORT
         value: 10000
-      - key: DB_HOST
-        sync: false
-        # e.g., your external MySQL host (Aiven, TiDB Cloud, PlanetScale, AWS RDS)
-      - key: DB_PORT
-        value: 3306
-      - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
-      - key: DB_NAME
-        value: bharatagri_iteration2
-      - key: DATABASE_URL
-        sync: false
-        # Optional: Direct connection string (e.g., mysql+pymysql://user:pass@host:port/dbname)
-      - key: DB_SSL_DISABLED
-        value: "false"
+      - key: DB_TYPE
+        value: sqlite
+      - key: SQLITE_DATABASE_PATH
+        value: /app/database/bharatagri.db
+      - key: EVIDENCE_UPLOAD_DIR
+        value: /app/backend/uploads/evidence
+      # Optional: To switch back to external MySQL at any time:
+      # - key: DB_TYPE
+      #   value: mysql
+      # - key: DB_HOST
+      #   sync: false
+      # - key: DB_PORT
+      #   value: 3306
+      # - key: DB_USER
+      #   sync: false
+      # - key: DB_PASSWORD
+      #   sync: false
+      # - key: DB_NAME
+      #   value: bharatagri_iteration2
+      # - key: DATABASE_URL
+      #   sync: false
+      # - key: DB_SSL_DISABLED
+      #   value: "false"
       - key: SECRET_KEY
         generateValue: true
       - key: ALGORITHM
@@ -43,6 +50,24 @@ services:
         value: 1440
       - key: ALLOWED_ORIGINS
         value: "*"
+
+    # --------------------------------------------------------------------------
+    # Storage Persistence on Render (Important Architectural Note):
+    # Free web services on Render use ephemeral disks. The container image
+    # includes the complete 176,856-record SQLite database at /app/database/bharatagri.db.
+    # On a free instance, reads work perfectly, but newly created bookings or uploads
+    # will reset whenever the instance spins down or redeploys.
+    #
+    # To enable durable persistence for production/client testing on Render:
+    # 1. Upgrade the service plan to 'starter' or higher.
+    # 2. Uncomment the 'disk' block below.
+    # 3. Update SQLITE_DATABASE_PATH to '/data/bharatagri.db'.
+    # 4. Update EVIDENCE_UPLOAD_DIR to '/data/uploads/evidence'.
+    # --------------------------------------------------------------------------
+    # disk:
+    #   name: bharatagri-storage
+    #   mountPath: /data
+    #   sizeGB: 1
 
   # ----------------------------------------------------------------------------
   # Option 2: Split Architecture (If hosting Frontend and Backend independently)

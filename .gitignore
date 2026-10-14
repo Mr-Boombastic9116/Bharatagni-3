@@ -40,3 +40,4 @@ backend/uploads/mango_inspections/
 *.swp
 *.swo
 *.log
+*.bak

@@ -1,25 +1,42 @@
+import os
+import sqlite3
 import urllib.parse
-from sqlalchemy import create_engine, text
+from pathlib import Path
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from backend.app.core.config import settings
 
 Base = declarative_base()
 
 connect_args = {}
-if settings.DB_SSL_CA:
-    connect_args["ssl"] = {"ca": settings.DB_SSL_CA}
-elif not settings.DB_SSL_DISABLED and any(provider in settings.DATABASE_URL.lower() for provider in ("render", "aiven", "tidb", "rds", "aws")):
-    connect_args["ssl"] = {"ssl_mode": "REQUIRED"}
+if settings.is_sqlite:
+    connect_args["check_same_thread"] = False
+else:
+    if settings.DB_SSL_CA:
+        connect_args["ssl"] = {"ca": settings.DB_SSL_CA}
+    elif not settings.DB_SSL_DISABLED and any(provider in settings.DATABASE_URL.lower() for provider in ("render", "aiven", "tidb", "rds", "aws")):
+        connect_args["ssl"] = {"ssl_mode": "REQUIRED"}
 
 try:
-    engine = create_engine(
-        settings.DATABASE_URL,
-        connect_args=connect_args,
-        pool_pre_ping=True,
-        pool_recycle=3600,
-        pool_size=10,
-        max_overflow=20
-    )
+    engine_kwargs = {
+        "connect_args": connect_args,
+        "pool_pre_ping": True,
+    }
+    if not settings.is_sqlite:
+        engine_kwargs["pool_recycle"] = 3600
+        engine_kwargs["pool_size"] = 10
+        engine_kwargs["max_overflow"] = 20
+
+    engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
+
+    # Enable foreign keys enforcement for SQLite connections
+    if settings.is_sqlite:
+        @event.listens_for(engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 except Exception as e:
     print(f"[Warning] Failed to initialize SQLAlchemy engine for {settings.sanitized_database_url}: {e}")
@@ -48,18 +65,41 @@ def check_db_health() -> bool:
 
 check_db_connection = check_db_health
 
-def check_mysql_status() -> int:
+def check_database_status() -> int:
     """
-    Checks MySQL connectivity and database initialization safely using read-only queries.
+    Checks database connectivity and initialization safely using read-only queries.
+    Supports both SQLite and MySQL backends.
     Returns:
         0: Database exists and contains users table with existing records
-        1: MySQL connection failed (server unreachable / offline)
-        2: Database does not exist
-        3: Database exists but tables are missing
+        1: Connection failed (server unreachable / offline)
+        2: Database does not exist / file not found
+        3: Database exists but tables are missing or empty
     """
+    if settings.is_sqlite:
+        db_path = Path(settings.resolved_sqlite_path)
+        if not db_path.exists():
+            print(f"[Warning] SQLite database file not found at {db_path}")
+            return 2
+        try:
+            conn = sqlite3.connect(db_path.as_posix(), timeout=5)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            if not cur.fetchone():
+                conn.close()
+                return 3
+            cur.execute("SELECT COUNT(*) FROM users")
+            user_count = cur.fetchone()[0]
+            conn.close()
+            if user_count == 0:
+                return 3
+            print(f"[OK] SQLite database '{db_path.name}' verified ({user_count} users preserved).")
+            return 0
+        except Exception as e:
+            print(f"[Error] SQLite database verification failed: {e}")
+            return 1
+
+    # MySQL Verification
     import pymysql
-    
-    # Extract connection parameters from DATABASE_URL if provided
     host = settings.DB_HOST
     port = settings.DB_PORT
     user = settings.DB_USER
@@ -113,7 +153,7 @@ def check_mysql_status() -> int:
 
         cur.execute("SELECT COUNT(*) FROM users")
         user_count = cur.fetchone()[0]
-        print(f"[OK] Database '{dbname}' verified on {host}:{port} ({user_count} users preserved).")
+        print(f"[OK] MySQL database '{dbname}' verified on {host}:{port} ({user_count} users preserved).")
         return 0
     except Exception as e:
         print(f"[Error] Database query check failed: {e}")
@@ -123,4 +163,8 @@ def check_mysql_status() -> int:
             conn.close()
         except Exception:
             pass
+
+# Backward compatibility alias
+check_mysql_status = check_database_status
+
 

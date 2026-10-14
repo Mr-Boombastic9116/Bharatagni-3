@@ -412,13 +412,38 @@ def get_forecast_vs_actual(
     demand_q = demand_q.group_by(Slot.date).order_by(Slot.date)
     demand_rows = demand_q.all()
 
-    act_dict = {r.proc_date: round(float(r.actual_qty), 2) for r in actuals_rows}
-    dem_dict = {r.slot_date: round(float(r.demand_qty), 2) for r in demand_rows}
+    def _to_date_obj(val):
+        if val is None:
+            return None
+        if isinstance(val, date) and not isinstance(val, datetime):
+            return val
+        if isinstance(val, datetime):
+            return val.date()
+        if isinstance(val, str):
+            try:
+                return datetime.strptime(val[:10], "%Y-%m-%d").date()
+            except Exception:
+                pass
+        return None
+
+    act_dict = {}
+    for r in actuals_rows:
+        d_obj = _to_date_obj(r.proc_date)
+        if d_obj:
+            act_dict[d_obj] = round(float(r.actual_qty), 2)
+
+    dem_dict = {}
+    for r in demand_rows:
+        d_obj = _to_date_obj(r.slot_date)
+        if d_obj:
+            dem_dict[d_obj] = round(float(r.demand_qty), 2)
+
     all_dates = sorted(set(list(act_dict.keys()) + list(dem_dict.keys())))
 
     # Determine dynamic anchor date: Use the latest verified physical procurement observation
     # in the database (or system today if later) so verified future-dated records (e.g. Oct 10-15) are never excluded.
-    db_max_proc = db.query(func.max(func.date(ProcurementRecord.created_at))).scalar()
+    db_max_proc_raw = db.query(func.max(func.date(ProcurementRecord.created_at))).scalar()
+    db_max_proc = _to_date_obj(db_max_proc_raw)
     anchor_date = max(today, db_max_proc) if db_max_proc else today
 
     # Model holdout benchmark baseline (RMSE = 2.95 Q on standard scale, expanding with horizon)
