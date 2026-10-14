@@ -38,7 +38,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application backend, ML models, and uploads
 COPY backend/ ./backend/
 COPY ml/ ./ml/
-COPY uploads/ ./uploads/
 COPY database/ ./database/
 
 # Copy built frontend assets from Stage 1 into the runtime image
