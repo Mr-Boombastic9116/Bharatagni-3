@@ -99,7 +99,7 @@ Agricultural procurement in India involves millions of smallholder farmers selli
 - **Pre-trained Models**: Serialized `.joblib` pipelines packaged in repository
 
 ### Database
-- **Engine**: MySQL 8.0+ / MariaDB 10.4+
+- **Engine**: SQLite 3 (Default for self-contained Render prototype) / MySQL 8.0+ / MariaDB 10.4+
 - **Schema Volume**: 58 relational tables, complete historical records, indexes, foreign keys, and audit sequences
 
 ### Deployment & Infrastructure
@@ -433,6 +433,9 @@ For full deployment details and split-service alternatives, consult [docs/DEPLOY
 
 ## 13. Security Architecture
 
+- **Strict BCrypt Password Verification**: Authenticates exclusively against genuine stored BCrypt hashes (`$2a$`, `$2b$`, `$2y$`). All demo-password bypasses, mock-hash acceptance, and plaintext passwords are strictly rejected.
+- **Production JWT Secret Enforcement**: Fails startup safely with a `RuntimeError` if `SECRET_KEY` is missing or insecure when `ENVIRONMENT=production` or `RENDER=true`. In development, an ephemeral 256-bit random secret is dynamically generated.
+- **Non-Destructive Database Protection**: Verifies existing database integrity on startup and strictly prevents recreation of empty databases or automatic re-import of SQL dumps.
 - **Stateless JWT Authorization**: Tokens signed via HS256 with user ID, role, and expiry timestamp.
 - **Strict Role-Based Access Control (RBAC)**: Endpoint-level dependencies prevent farmers from accessing administrative functions or centre processing queues.
 - **Multi-Tenant Data Isolation**: Procurement centres can only access and process bookings directed to their specific centre ID (`procurement_centre_id`).
@@ -445,26 +448,31 @@ For full deployment details and split-service alternatives, consult [docs/DEPLOY
 ## 14. Testing and Troubleshooting
 
 ### Running the Test Suite
-The test suite validates role authentication, API endpoints, AI pipelines, and logistics math:
+The test suite validates role authentication, API endpoints, AI pipelines, logistics math, and security guards:
 
 ```bash
-# Run specific test modules
-python -m pytest tests/test_dashboard_roles.py tests/test_copilot_matrix.py -v
+# Run full automated test suite (79 tests)
+python -m pytest tests/ -v
 
-# Run anomaly pipeline test
-python -m pytest tests/test_anomaly_pipeline.py -v
+# Run specific security and database guards
+python -m pytest tests/test_security_and_database_guards.py -v
 
 # Verify frontend production compilation
 cd frontend && npm run build
 ```
 
 ### Verified Test Results
+- `tests/test_security_and_database_guards.py`: 8 passed (Password verification, mock-hash rejection, demo-bypass rejection, production SECRET_KEY guard, SQLite integrity guard)
 - `tests/test_anomaly_pipeline.py`: 2 passed (Anomaly detection & review workflow)
 - `tests/test_copilot_matrix.py`: 8 passed (Multi-condition Copilot queries & centre isolation)
 - `tests/test_queue_api.py`: 1 passed (Queue wait time estimation)
 - `tests/test_dashboard_roles.py`: 7 passed (Role-based access control, multi-centre isolation)
 - `tests/test_e2e_features.py`: 4 passed (DBT analytics, truck workflow, Copilot)
+- `tests/test_forecast_and_mango_regression.py`: 9 passed (Forecast models, mango grading)
+- `tests/test_mango_ai_quality.py`: 30 passed (Quality classification bounds)
+- `tests/test_procurement_process.py`: 7 passed (6-stage pipeline sequencing, immutable audit trail)
 - `tests/test_supply_demand_math.py`: 3 passed (Surplus/deficit consistency, crop isolation)
+- **Total**: **79 passed, 0 failures** across the entire backend test suite
 - `frontend/npm run build`: Built cleanly in 6.1s (`dist/index.html`, `dist/assets/*.js`, `dist/assets/*.css`)
 
 ### Common Troubleshooting Items

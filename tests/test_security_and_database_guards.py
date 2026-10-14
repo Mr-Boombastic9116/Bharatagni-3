@@ -95,3 +95,43 @@ def test_development_ephemeral_secret_fallback():
             os.environ["SECRET_KEY"] = orig_secret
         else:
             os.environ.pop("SECRET_KEY", None)
+
+def test_password_verification_rejects_mock_hashes():
+    """Verify verify_password rejects mock hashes like 'mock_hash_123'."""
+    from backend.app.core.security import verify_password
+    assert verify_password("BharatAgri@2026", "mock_hash_123") is False
+    assert verify_password("password123", "mock_hash_123") is False
+    assert verify_password("mock_hash_123", "mock_hash_123") is False
+
+def test_password_verification_rejects_plaintext_stored_passwords():
+    """Verify verify_password rejects plaintext passwords stored without BCrypt hashing."""
+    from backend.app.core.security import verify_password
+    assert verify_password("mySecretPass123", "mySecretPass123") is False
+    assert verify_password("admin123", "admin123") is False
+
+def test_password_verification_rejects_demo_bypass_passwords():
+    """Verify hardcoded demo bypass passwords do not match invalid hashes."""
+    from backend.app.core.security import verify_password, get_password_hash
+    # Create a hash for a completely different password
+    real_hash = get_password_hash("DifferentSecret#987")
+    
+    # Old bypass passwords must FAIL
+    assert verify_password("password123", real_hash) is False
+    assert verify_password("centre123", real_hash) is False
+    assert verify_password("admin123", real_hash) is False
+    assert verify_password("farmer123", real_hash) is False
+
+def test_password_verification_legitimate_bcrypt_hashes():
+    """Verify legitimate BCrypt hashes authenticate correctly and reject wrong passwords."""
+    from backend.app.core.security import verify_password, get_password_hash
+    test_pass = "SecureKisan#2026"
+    test_hash = get_password_hash(test_pass)
+    
+    # Valid password matches
+    assert verify_password(test_pass, test_hash) is True
+    # Wrong password fails
+    assert verify_password("WrongPassword#999", test_hash) is False
+    # Empty inputs fail
+    assert verify_password("", test_hash) is False
+    assert verify_password(test_pass, "") is False
+
