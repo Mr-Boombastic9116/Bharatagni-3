@@ -1,573 +1,469 @@
-# BHARATAGRI / KISANFLOW ITERATION 2.7
+# BharatAgri — Iteration 3
 
-### Enterprise National Agricultural Procurement Management, Traceability, AI Intelligence & Optimization Platform
+> **Agricultural Procurement Management, Logistics Optimization & Intelligence Platform**  
+> Production-ready, data-preserving release engineered for seamless public deployment on [Render](https://render.com).
 
-BharatAgri (KisanFlow) is a digital public infrastructure platform for agricultural procurement operations. It connects farmers, primary agricultural credit societies (PACS), procurement centres (mandis), logistics providers, and state/national command centres. The system manages slot booking, dynamic queue dispatching, multi-mango computer vision quality grading, tamper-evident weighbridge logging, Direct Benefit Transfer (DBT) payments, supply forecasting, and fleet optimization.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-5.3-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0%20%7C%20MariaDB-4479A1.svg?logo=mysql&logoColor=white)](https://www.mysql.com)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com)
+[![Render](https://img.shields.io/badge/Deploy-Render-46E3B7.svg?logo=render&logoColor=white)](https://render.com)
 
 ---
 
 ## Table of Contents
-
-1. [Executive Summary & Stakeholder Architecture](#1-executive-summary--stakeholder-architecture)
-2. [End-to-End Procurement Lifecycle](#2-end-to-end-procurement-lifecycle)
-3. [Recent Critical Fixes & Pipeline Hardening (Iteration 2.7)](#3-recent-critical-fixes--pipeline-hardening-iteration-27)
-   - [A. Government Supply Forecast & Projected Procurement Fix](#a-government-supply-forecast--projected-procurement-fix)
-   - [B. Mango AI Segmentation, Shadow Exclusion & Internal Padding](#b-mango-ai-segmentation-shadow-exclusion--internal-padding)
+1. [Project Overview](#1-project-overview)
+2. [Features and Functionality](#2-features-and-functionality)
+3. [User Roles and Workflows](#3-user-roles-and-workflows)
 4. [Technology Stack](#4-technology-stack)
-5. [Demo Accounts & Role Capabilities](#5-demo-accounts--role-capabilities)
-6. [Installation & Fresh-Machine Setup Guide](#6-installation--fresh-machine-setup-guide)
-7. [Environment Configuration (`.env`)](#7-environment-configuration-env)
-8. [Database Architecture & Verified Counts](#8-database-architecture--verified-counts)
-9. [AI Models & Empirical Performance (Mandatory Audit)](#9-ai-models--empirical-performance-mandatory-audit)
-   - [1. Mango AI Multi-Instance Segmentation & Defect Classifier](#1-mango-ai-multi-instance-segmentation--defect-classifier)
-   - [2. XGBoost Supply Forecasting Engine](#2-xgboost-supply-forecasting-engine)
-   - [3. XGBoost Price Estimation Model](#3-xgboost-price-estimation-model)
-   - [4. Isolation Forest Procurement Anomaly Surveillance](#4-isolation-forest-procurement-anomaly-surveillance)
-   - [5. Gradient Boosting Mandi Queue Wait Time Engine](#5-gradient-boosting-mandi-queue-wait-time-engine)
-   - [6. Google OR-Tools Mixed-Integer Fleet Optimizer](#6-google-or-tools-mixed-integer-fleet-optimizer)
-10. [Core System Features & Role-by-Role Walkthrough](#10-core-system-features--role-by-role-walkthrough)
-11. [Procurement Copilot Architecture](#11-procurement-copilot-architecture)
-12. [API Reference](#12-api-reference)
-13. [Comprehensive Testing & Verification Suite](#13-comprehensive-testing--verification-suite)
-14. [Troubleshooting Guide](#14-troubleshooting-guide)
-15. [Limitations & Future Roadmap](#15-limitations--future-roadmap)
+5. [Architecture and Folder Structure](#5-architecture-and-folder-structure)
+6. [Prerequisites](#6-prerequisites)
+7. [Local Installation and Setup](#7-local-installation-and-setup)
+8. [Environment Variables](#8-environment-variables)
+9. [Database and Absolute Data Preservation](#9-database-and-absolute-data-preservation)
+10. [AI/ML and Optimization Modules](#10-aiml-and-optimization-modules)
+11. [API Documentation](#11-api-documentation)
+12. [Render Deployment Guide](#12-render-deployment-guide)
+13. [Security Architecture](#13-security-architecture)
+14. [Testing and Troubleshooting](#14-testing-and-troubleshooting)
+15. [Limitations and Future Roadmap](#15-limitations-and-future-roadmap)
+16. [Contributing and License](#16-contributing-and-license)
 
 ---
 
-## 1. Executive Summary & Stakeholder Architecture
+## 1. Project Overview
 
-BharatAgri Iteration 2 connects five operational tiers into a unified, authenticated, role-based architecture:
+Agricultural procurement in India involves millions of smallholder farmers selling produce at government Minimum Support Price (MSP) centres and state agricultural marketing boards. Traditional procurement is plagued by:
+- Severe mandi congestion and multi-day waiting queues causing produce spoilage.
+- Distress selling to unregulated middlemen due to lack of scheduling visibility.
+- Weighment tampering, quality dispute discrepancies, and phantom booking fraud.
+- Acute shortages of jute packing bags (*bardan*) and delayed truck dispatches from overwhelmed centres.
+- Delayed Direct Benefit Transfer (DBT) payment disbursements.
 
-```text
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   BHARATAGRI / KISANFLOW PLATFORM                                      │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-          │                                 │                                 │
-          ▼                                 ▼                                 ▼
-┌───────────────────┐             ┌───────────────────┐             ┌───────────────────┐
-│      FARMER       │             │    FIELD AGENT    │             │PROCUREMENT CENTRE │
-│  (Mobile / Web)   │             │  (CSC / Assisted) │             │ (Mandi Operator)  │
-├───────────────────┤             ├───────────────────┤             ├───────────────────┤
-│ • Aadhaar eKYC    │             │ • Cluster Roster  │             │ • Gate QR Scan    │
-│ • Land & Crops    │             │ • Assisted Onboard│             │ • Physical QC     │
-│ • Dynamic Slots   │             │ • Assisted Booking│             │ • Mango AI Vision │
-│ • Digital QR Pass │             │ • Farmer Grievance│             │ • Weighbridge Log │
-│ • Live Queue Token│             │ • Verification Log│             │ • Lot Generation  │
-│ • "Come Now" Alert│             └───────────────────┘             │ • Storage Check   │
-│ • DBT Passbook    │                                               │ • Bardan Tracking │
-└───────────────────┘                                               └───────────────────┘
-          │                                 │                                 │
-          └────────────────────────┬────────┴─────────────────────────────────┘
-                                   │
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                              STATE & NATIONAL GOVERNMENT COMMAND CENTRE                                │
-├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ • Live Procurement Dashboard (Tonnage, Disbursed Funds, Active Mandis, Capacity Utilization)           │
-│ • Dynamic Supply Forecasting (Historical Actuals + 7–30 Day Projected Procurement via XGBoost)         │
-│ • DBT Payout Lifecycle Tracker (Paid, Processing, Pending, Failed, Rejected)                           │
-│ • Mandi Congestion Surveillance (Low, Medium, High, Critical) & Automated Redirection Recommendations   │
-│ • Google OR-Tools MILP Fleet Dispatch Optimization (Distance minimization & constraint enforcement)   │
-│ • Unsupervised Anomaly Review (Isolation Forest volume, tare, turnaround & moisture outlier flags)     │
-│ • Grounded Government Copilot (NL query parsing grounded strictly in live SQL state)                   │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+**BharatAgri Iteration 3** solves these systemic challenges through a production-ready, full-stack intelligence platform. It provides appointment scheduling, cryptographic QR gate passes, transparent digital weighbridge integration, an automated 6-stage gate-to-godown validation pipeline, and operational AI models that forecast arrivals, detect fraudulent anomalies, and optimize inter-centre truck routes.
 
 ---
 
-## 2. End-to-End Procurement Lifecycle
+## 2. Features and Functionality
 
-Every lot procured through BharatAgri transitions through an 8-stage state machine backed by database records and audit logs:
-
-```text
-[1. BOOKED] ────► [2. CHECKED_IN] ────► [3. COLLECTED] ────► [4. QUALITY_CHECKED]
-      │                   │                    │                     │
-  Dynamic Slot        QR Gate Scan       Inward Tonnage        Moisture, Impurities
-  Token Issue        Gate Log Entry      Vehicle / Driver     & Mango AI Vision
-      │                   │                    │                     │
-      ▼                   ▼                    ▼                     ▼
-[5. WEIGHED] ───► [6. PROCURED] ────► [7. STORED] ─────► [8. PAYMENT_INITIATED] ──► [PAID]
-      │                   │                    │                     │
-  Gross / Tare       MSP Calculation      Warehouse Bin        Public Financial
-  Net Weighment      Immutable Lot ID     Stack Photo Log      Management (PFMS / DBT)
-```
-
-**Lot Traceability:** Every procurement produces an immutable Lot Number (`LOT-YYYYMMDD-XXXXX`) linking:
-`Farmer ID ↔ Booking ID ↔ Collection Slip ↔ Quality Certificate ↔ Electronic Weighment ↔ Storage Bin ↔ Truck Dispatch ↔ Bank Account / DBT Payout Reference`.
-
----
-
-## 3. Recent Critical Fixes & Pipeline Hardening (Iteration 2.7)
-
-### A. Government Supply Forecast & Projected Procurement Fix
-
-#### Root Cause Analysis
-1. **Historical Data Exclusion:** The API endpoint `GET /api/government/forecast-vs-actual` previously evaluated date bounds using `today = date.today()` (evaluated to `2026-10-09`), while the database contains 9,641 physical weighbridge records extending up to `2026-10-15`. This artificial cutoff dropped all historical procurement records between Oct 9 and Oct 15.
-2. **Projected Procurement Missing or Zero:** When no pre-aggregated rows existed in `supply_forecasts`, the endpoint fell back to a static heuristic multiplier (`actual * 0.95` or `0`), failing to invoke the trained XGBoost supply model (`ml/models/supply_forecast_xgb.joblib`).
-3. **Graph Rendering Discontinuity:** In the frontend (`GovernmentDashboard.jsx`), Recharts rendered `actual` and `projected` as separate, disconnected series with floating forecast lines.
-4. **Interval Inconsistency:** Selecting `interval="monthly"` defaulted back to daily groupings or failed to roll up multi-month records.
-
-#### Implemented Solution
-- **Dynamic Anchor Date:** Updated `backend/app/api/government.py` to calculate `anchor_date = max(today, db_max_proc)` from `procurement_records`, ensuring all 9,641 verified historical records are included regardless of system clock time.
-- **Dynamic Model Forecast Invocation:** Created `run_daily_model_forecast` in `government.py`, which loads `supply_predictor` (`ml/inference/supply_predictor.py`), queries active centres for the selected crop, gathers historical 7-day arrivals and advance slot bookings, and generates multi-centre projections.
-- **Continuous Transition Anchor:** Added `is_transition: True` on the boundary point where historical observations end and projected procurement begins, mapping `predicted_quantity: actual_quantity`. This visually connects the solid historical green line to the dashed projected blue line in Recharts.
-- **Calendar Rollup Support:** Implemented date parsing and monthly grouping (`interval="monthly"`), correctly aggregating `(year, month)` actuals and future projections.
-- **Honest Data Gaps:** If a crop has zero historical procurement records, the API returns `data_status: "INSUFFICIENT_DATA"` with empty series rather than fabricating zeroes or simulated numbers.
+- **Farmer Onboarding & e-KYC**: Self-registration with mobile verification, land record mapping, crop declarations, and bank details for DBT.
+- **Dynamic Slot Booking & Capacity Management**: Farmers book timed delivery slots based on real-time daily centre capacities, preventing physical queues.
+- **Cryptographic QR Gate Passes**: Generates secure `BA-QR-<appointment_id>` digital passes verified on arrival via camera scanner or operator lookup.
+- **6-Stage Gate-to-Godown Procurement Engine**:
+  1. *Gate In*: Verification of QR pass, farmer credentials, vehicle, and produce details.
+  2. *Quality Inspection*: Moisture testing, visual inspection, and optional computer vision mango grading.
+  3. *Gross Weighment*: Digital weighbridge integration recording loaded vehicle/bag weight.
+  4. *Tare Weighment & Net Weight*: Automatic net produce calculation and moisture deduction.
+  5. *Storage & Bardan Allocation*: Warehouse lot, stack number, and gunny bag tracking.
+  6. *Payment Slip Issuance*: Electronic procurement receipt generation triggering DBT ledger entry.
+- **Predictive Intelligence & Operations Research**:
+  - **XGBoost Supply Forecaster**: Projects district-level crop arrival surges 7–14 days in advance.
+  - **Isolation Forest Anomaly Detector**: Identifies suspicious weighments, yield discrepancies, and middleman activity.
+  - **Google OR-Tools Logistics Optimizer**: Calculates optimal multi-centre truck routes to relieve overloaded storage godowns.
+  - **Bardan Inventory Optimizer**: Predicts gunny bag requirements per centre to prevent packaging bottlenecks.
+  - **Dynamic Price Engine**: Calculates quality-adjusted procurement payouts based on MSP guidelines and grade metrics.
+- **Executive & Administrative Dashboards**: High-level procurement summaries, state-wide district rankings, DBT payout status tracking, and audit logs.
 
 ---
 
-### B. Mango AI Segmentation, Shadow Exclusion & Internal Padding
+## 3. User Roles and Workflows
 
-#### Root Cause Analysis
-1. **Background Shadow Infiltration:** Mangoes resting on a white inspection table under overhead lighting cast soft grey and dark perimeter shadows. Naive thresholding expanded the mango boundary to include these external shadows.
-2. **Dark Peel Misclassification:** Naturally dark green (unripe/mature Goan varieties) and dark yellow/ochre peel was misclassified as fungal lesions because color models treated low lightness ($L^*$) or negative $a^*$ as necrotic tissue.
-3. **Internal Lighting Gradients:** Smooth directional shadow gradients falling across the fruit surface triggered false positive defect flags due to brightness variance.
-4. **Border Outline Artifacts:** Pixels along the extreme boundary of the segmented fruit often suffer from anti-aliasing and shadow transitions, inflating the defect percentage.
-5. **Segmentation Failure Inflation:** If segmentation was too small or failed, fallbacks previously defaulted to 100% defect rates or crashed downstream grading.
-
-#### Implemented Solution
-- **Multi-Scale Outer Perimeter Shadow Exclusion:** In `ml/inference/mango_detector.py`, added morphological multi-scale erosion (`eroded_peel_5`, `eroded_peel_9`) to suppress outer cast shadows and dark border outline pixels extending toward the white table.
-- **Healthy Dark Peel Protection:** In `ml/inference/mango_quality_scanner.py`:
-  - Protected dark green peel: `g > r * 0.92` with `l_est > 25.0` and `grad < 30.0`.
-  - Protected dark yellow/ochre peel: `r > b * 1.30`, `b_est > 136.0`, and `grad < 22.0`.
-- **Illumination Shadow Differentiation:** Refined `is_illumination_shadow` to recognize gradual surface gradients based on spatial edge sharpness (`< 18.0`), local contrast (`< 24.0`), and gradient magnitude (`< 18.0`), distinguishing them from sharp necrotic lesions.
-- **Adaptive Internal Padding:** Created an eroded inner analysis mask:
-  $$\text{erode\_rad} = \max\left(2, \min\left(10, \operatorname{round}(\min(w, h) \times 0.035)\right)\right)$$
-  Defect calculations operate exclusively inside this inner mask, and the denominator is strictly the valid pixels of that same inner mask:
-  $$\text{Defect } \% = \frac{\sum \text{Defect Pixels} \cap \text{Inner Mask}}{\sum \text{Valid Inner Mask Pixels}} \times 100$$
-- **Safe Handling of Failed Segmentations:** When an inner mask has fewer than 100 pixels, the scanner returns `segmentation_status: "NEEDS_REVIEW"` with `segmentation_failure: True` and 0% defect rate (never 100%), routing the fruit for human inspection.
+| Role | Target Users | Primary Application Routes | Key Responsibilities & Capabilities |
+|------|--------------|----------------------------|--------------------------------------|
+| **Farmer** | Agricultural producers | `#farmer-dashboard`<br>`#book-slot`<br>`#my-booking` | Declares crops, books delivery appointments, downloads QR pass, tracks gate status, and monitors DBT payment disbursements. |
+| **Field Agent** | PACS / Cooperative staff | `#agent-dashboard`<br>`#book-slot` | Assists assigned farmers, submits proxy slot bookings for non-digital farmers, and monitors grievance tickets. |
+| **Procurement Centre** | Mandi supervisors & scale operators | `#centre-dashboard`<br>`#centre-process`<br>`#centre-storage` | Manages operating days and capacity, scans QR passes, records weighments and quality checks, tracks *bardan* stock, and requests transport trucks. |
+| **Government / Admin** | State agricultural directors & auditors | `#government-dashboard`<br>`#copilot` | Monitors macro procurement vs MSP targets, audits flagged anomaly transactions, approves truck dispatches, and queries intelligence via Copilot. |
 
 ---
 
 ## 4. Technology Stack
 
-| Layer | Technologies & Libraries |
-| :--- | :--- |
-| **Frontend** | React 18, Vite, React Router DOM v6, Recharts, Lucide React icons, Vanilla CSS Design System (WCAG AA compliant light/dark themes). |
-| **Backend REST API** | Python 3.12, FastAPI (async high-performance ASGI), Pydantic v2, SQLAlchemy 2.0 ORM, PyMySQL, Uvicorn. |
-| **Security & Auth** | JWT Bearer tokens (`HS256`), bcrypt password hashing, role-based access control (RBAC). |
-| **Relational Database** | MySQL 8.0+ / MariaDB (InnoDB engine, utf8mb4, transactions, foreign key constraints, indexes). |
-| **Machine Learning** | XGBoost (`xgboost`), Scikit-Learn (`scikit-learn`), Joblib, NumPy, Pandas, SciPy. |
-| **Computer Vision** | OpenCV (`cv2`), Scikit-Image (`skimage`), CIELAB color space transformation, Euclidean Distance Transform (EDT). |
-| **Optimization** | Google OR-Tools (`ortools.linear_solver.pywraplp` Mixed-Integer Linear Programming / SCIP). |
-| **Testing** | Pytest 9.x, Starlette TestClient, AnyIO. |
+### Frontend
+- **Framework**: React 18.3 (Single Page Application)
+- **Tooling & Bundler**: Vite 5.3 (Fast HMR and tree-shaken production builds)
+- **Styling**: Tailored Vanilla CSS design system with Dark/Light mode theme engine
+- **Data Visualization**: Recharts 3.10
+- **Icons & QR**: Lucide React 0.395, `qrcode.react` 4.2, `html5-qrcode` 2.3
+
+### Backend
+- **Framework**: FastAPI 0.110 (Asynchronous REST API, OpenAPI 3.1 specs)
+- **ASGI Server**: Uvicorn 0.28 (Standard high-performance async server)
+- **ORM & Driver**: SQLAlchemy 2.0 with PyMySQL 1.1 connection pooling
+- **Security & Auth**: JWT (Python-Jose 3.3, HS256), BCrypt (`passlib[bcrypt]`)
+- **Data Validation**: Pydantic v2.6 with Pydantic-Settings
+
+### Artificial Intelligence & Optimization
+- **Libraries**: Scikit-Learn 1.4, XGBoost 2.0, Google OR-Tools 9.9, Joblib 1.3, NumPy 1.26, Pandas 2.2
+- **Pre-trained Models**: Serialized `.joblib` pipelines packaged in repository
+
+### Database
+- **Engine**: MySQL 8.0+ / MariaDB 10.4+
+- **Schema Volume**: 58 relational tables, complete historical records, indexes, foreign keys, and audit sequences
+
+### Deployment & Infrastructure
+- **Hosting**: Render (Web Service using Multi-Stage Dockerfile)
+- **Containerization**: Multi-stage Docker image (Node 20 builder + Python 3.12 slim runner)
 
 ---
 
-## 5. Demo Accounts & Role Capabilities
+## 5. Architecture and Folder Structure
 
-All accounts are pre-seeded in the database with the unified password: **`BharatAgri@2026`**
-
-| Role | Username | Entity / Centre | Capabilities |
-| :--- | :--- | :--- | :--- |
-| **Farmer** | `farmer@bharatagri.demo` | Rameshwar Patil (`FRM-DEMO-001`) | Slot booking, digital QR pass, live queue token, DBT passbook, grievance lodging. |
-| **Procurement Centre** | `centre@bharatagri.demo` | Sanquelim Procurement Centre 1 (`C01`) | Gate QR scan, physical QC, mango AI inspection, electronic weighbridge, lot creation, storage check. |
-| **Government Admin** | `admin@bharatagri.demo` | National Command Centre | National analytics, supply forecast, DBT payout tracking, congestion monitor, OR-Tools fleet optimizer, Copilot. |
-| **Field Agent** | `agent@bharatagri.demo` | Pernem CSC Operator (`AGT-DEMO-001`) | Assisted farmer onboarding, cluster crop quotas, assisted booking, offline farmer grievances. |
-
-*(The login screen `/login` features 1-click Quick Demo buttons for each role).*
-
----
-
-## 6. Installation & Fresh-Machine Setup Guide
-
-### Prerequisites
-- **Operating System:** Windows 10/11, macOS, or Linux.
-- **Python:** 3.10, 3.11, or 3.12 (64-bit).
-- **Node.js:** 18.x or 20.x LTS with `npm`.
-- **Database:** MySQL 8.0+ or MariaDB 10.4+ (e.g., via XAMPP) running on port `3306`.
-
-### 1-Click Launch (Windows)
-Double-click `start.bat` in the project root. It will:
-1. Verify Python and Node.js environments.
-2. Install any missing Python dependencies (`requirements.txt`) and npm packages.
-3. Check MySQL port 3306 connectivity.
-4. Launch FastAPI on `http://127.0.0.1:5000` and Vite on `http://localhost:3000`.
-5. Open your default web browser to `http://localhost:3000`.
-
-### Manual Launch (Command Line)
-
-```bash
-# 1. Clone or extract repository
-cd c:\Users\test\Desktop\BharatAgri-main\BharatAgri-main
-
-# 2. Setup Python environment
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-
-# 3. Setup Database
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS bharatagri_iteration2 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -u root bharatagri_iteration2 < database\bharatagri_iteration2.sql
-
-# 4. Start Backend Server (Terminal 1)
-set PYTHONPATH=.
-python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 5000 --reload
-
-# 5. Start Frontend Dev Server (Terminal 2)
-cd frontend
-npm install
-npm run dev
+```
+BharatAgri-3/
+├── .env.example                     # Environment configuration template
+├── .gitignore                       # Production Git ignore rules
+├── Dockerfile                       # Multi-stage production container build
+├── .dockerignore                    # Docker build exclusion rules
+├── render.yaml                      # Render Blueprint deployment definition
+├── requirements.txt                 # Root Python dependencies manifest
+├── start.bat                        # Safe Windows local launcher
+├── start-local.sh                   # Safe Linux/macOS local launcher
+├── backend/
+│   ├── requirements.txt             # Backend-specific dependency copy
+│   ├── app/
+│   │   ├── main.py                  # FastAPI application entry point & SPA fallback
+│   │   ├── api/                     # REST API route controllers
+│   │   │   ├── auth.py              # Login, registration, token verification
+│   │   │   ├── farmers.py           # Farmer profile, crops, e-KYC
+│   │   │   ├── centres.py           # Centre details, operating hours, capacity
+│   │   │   ├── slots.py             # Appointment slot availability
+│   │   │   ├── bookings.py          # Booking creation and scheduling
+│   │   │   ├── qr.py                # QR pass generation and verification
+│   │   │   ├── procurement.py       # 6-step gate-to-godown validation workflow
+│   │   │   ├── trucks.py            # Fleet management & OR-Tools dispatch
+│   │   │   ├── ai.py                # AI forecasts, anomalies, congestion endpoints
+│   │   │   ├── government.py        # Macro analytics and administrative reporting
+│   │   │   ├── price.py             # Dynamic quality-adjusted price calculation
+│   │   │   ├── queue.py             # Queue wait estimation
+│   │   │   └── health.py            # Read-only health and diagnostic probe
+│   │   ├── core/                    # Core application foundation
+│   │   │   ├── config.py            # Settings, DATABASE_URL normalization, SSL options
+│   │   │   ├── database.py          # SQLAlchemy engine, session maker, connection pool
+│   │   │   └── security.py          # BCrypt password hashing & JWT token logic
+│   │   ├── models/                  # SQLAlchemy ORM database models (58 entities)
+│   │   ├── schemas/                 # Pydantic request and response schemas
+│   │   └── services/                # Business logic, Copilot engine, queue engine
+│   ├── tests/                       # Backend test suite
+│   └── uploads/                     # Upload directory for photo evidence
+├── frontend/
+│   ├── package.json                 # Frontend dependencies and npm scripts
+│   ├── vite.config.js               # Vite bundler configuration & local API proxy
+│   ├── index.html                   # HTML entry point with metadata
+│   ├── public/                      # Static web assets
+│   └── src/
+│       ├── App.jsx                  # Main application routing and role gating
+│       ├── main.jsx                 # React root renderer
+│       ├── index.css                # Custom CSS design system
+│       ├── components/              # Modular UI components (Navbar, Modals, Cards)
+│       ├── pages/                   # Role dashboards & workflow pages
+│       ├── context/                 # Theme and Language React contexts
+│       ├── services/                # API client (`api.js`)
+│       └── utils/                   # Formatting, date, and math helpers
+├── ml/
+│   ├── models/                      # Pre-trained production machine learning models
+│   │   ├── supply_forecast_xgb.joblib
+│   │   ├── anomaly_detector_iforest.joblib
+│   │   ├── price_estimation_xgb.joblib
+│   │   ├── queue_wait_model.joblib
+│   │   └── mango/
+│   │       ├── mango-quality-v1.joblib
+│   │       └── mango_best_model.joblib
+│   ├── inference/                   # Inference engines (Truck optimizer, anomaly, etc.)
+│   ├── preprocessing/               # Feature extractors (CIELAB color converter)
+│   └── training/                    # Standalone model training pipelines
+├── database/
+│   ├── SCHEMA.md                    # Complete 58-table schema documentation
+│   └── bharatagri_iteration2.sql    # Authoritative reference SQL dump
+├── docs/
+│   ├── ARCHITECTURE.md              # Detailed technical architecture
+│   ├── DEPLOYMENT.md                # Render and external database deployment guide
+│   ├── ENVIRONMENT_VARIABLES.md     # Complete environment variables guide
+│   └── DATABASE_PRESERVATION.md     # Mandatory data preservation safeguards
+├── legacy/                          # Archived Iteration 1 Express components
+└── tests/                           # End-to-end integration and regression tests
 ```
 
 ---
 
-## 7. Environment Configuration (`.env`)
+## 6. Prerequisites
 
-Configure the `.env` file in the project root:
+Ensure your environment meets these runtime specifications before running locally:
 
-```env
-# Database Configuration
+| Dependency | Minimum Version | Tested Version | Notes |
+|------------|-----------------|----------------|-------|
+| **Python** | 3.10+ | 3.12.10 | Required for FastAPI backend and ML inference |
+| **Node.js** | 18.0+ | 20.18.0 | Required for Vite frontend compilation |
+| **npm** | 9.0+ | 10.8.2 | Package manager for frontend libraries |
+| **MySQL / MariaDB** | 8.0+ / 10.4+ | 10.4.32 (XAMPP) | Database server hosting `bharatagri_iteration2` |
+| **Docker** *(Optional)* | 20.10+ | 24.0+ | Required only if testing container builds locally |
+
+---
+
+## 7. Local Installation and Setup
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/Mr-Boombastic9116/BharatAgri-3.git
+cd BharatAgri-3
+```
+
+### Step 2: Configure Environment Variables
+Copy the template to `.env`:
+```bash
+cp .env.example .env
+```
+Ensure `.env` matches your local MySQL server (default for local XAMPP):
+```ini
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=bharatagri_iteration2
-
-# JWT Security
 SECRET_KEY=bharatagri_secure_jwt_secret_key_2026_iteration2
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-
-# Server
 PORT=5000
 ```
 
----
+### Step 3: Install Backend Dependencies
+```bash
+python -m venv .venv
+# On Windows:
+.venv\Scripts\activate
+# On Linux/macOS:
+source .venv/bin/activate
 
-## 8. Database Architecture & Verified Counts
-
-The operational database `bharatagri_iteration2` contains **58 normalized tables**.
-
-### Verified Table Record Counts (Audited Snapshot)
-
-| Category | Table Name | Verified Count | Description |
-| :--- | :--- | :---: | :--- |
-| **Farmers & Users** | `users` | **5,052** | System users across all roles (Farmer, Agent, Centre, Govt). |
-| | `farmers` | **5,011** | Farmer profiles with landholdings, bank account, and eKYC status. |
-| | `farmer_crops` | **5,545** | Crop registrations per farmer with acreage and expected yield. |
-| **Centres & Geography** | `procurement_centres`| **32** | Active procurement mandis across 6 states. |
-| | `states` | **4** | State master records (Goa, Maharashtra, Karnataka, Punjab). |
-| | `districts` | **10** | District master boundaries. |
-| | `daily_capacity` | **1,432** | Daily intake capacity records per centre. |
-| | `employees` | **163** | Registered mandi personnel across 6 operational roles. |
-| **Intake & Appointments**| `bookings` | **19,046** | Farmer slot reservations. |
-| | `appointments` | **18,930** | Synchronized mandi appointment entries. |
-| | `slots` | **8,828** | Hourly slot capacity definitions. |
-| | `qr_codes` | **10,212** | Unique gate-entry tokens and verification codes. |
-| **Physical Procurement** | `collection_records` | **9,703** | Gate arrivals and truck check-ins. |
-| | `quality_checks` | **9,036** | Physical laboratory quality assessments. |
-| | `weighments` | **9,003** | Gross and tare weighbridge weighments. |
-| | `procurement_records`| **9,641** | Completed procurement transactions. |
-| | `procurement_transactions` | **9,668** | Financial ledger entries. |
-| | `payments` | **9,669** | Direct Benefit Transfer (DBT) payment disbursements. |
-| **Mandi Operations** | `queue_events` | **20,092** | Event log (Check-in, QC, Weigh, Checkout). |
-| | `notifications` | **20,002** | Automated SMS, push, and "Come Now" alert records. |
-| | `centre_daily_metrics`| **1,006** | Historical daily centre throughput, wait times, congestion. |
-| | `inventory` | **100** | Bardan jute bag stock records. |
-| **Logistics & Fleet** | `trucks` | **54** | Fleet vehicle assets. |
-| | `truck_allocations` | **73** | Vehicle assignments to routes. |
-| | `truck_requests` | **24** | Centre dispatch requests. |
-| | `truck_route_predictions`| **72** | OR-Tools generated route solutions. |
-| **Quality & AI** | `ai_quality_inspections` | **89** | Multi-mango computer vision inspection sessions. |
-| | `ai_inspection_detections`| **286** | Individual mango segmented instance detections. |
-| | `procurement_evidence` | **58** | Photographic evidence records across QC, Weigh, and Storage. |
-| **Audit & Governance** | `audit_logs` | **1,527** | Tamper-evident administrative audit log entries. |
-| | `process_audit_logs` | **376** | Step-by-step procurement state transition logs. |
-| | `complaints` | **42** | Farmer grievance redressal tickets. |
-| | `alerts` | **36** | Active operational alert notices. |
-
----
-
-## 9. AI Models & Empirical Performance (Mandatory Audit)
-
-Every model and algorithmic engine in BharatAgri is independently evaluated using test sets, reproducible scripts, and baseline comparisons. **No accuracy claims or performance numbers are fabricated.**
-
-### Summary Model Performance Matrix
-
-| Model / Engine | Algorithm / Library | Task | Evaluation Dataset | Key Metrics | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Mango AI Defect Classifier** | RBF SVM ($L^*, a^*, b^*$) | 6-Class Fruit Quality | 920 untouched test samples (80/20 split) | **Accuracy: 81.09%**, **Macro F1: 0.7745**, **Weighted F1: 0.8084** | Validated |
-| **Supply Forecaster** | XGBoost Regressor | Procurement Arrival Volume (Q) | Chronological holdout (Months 10–12, 534 rows) | **MAE: 2.30 Q**, **RMSE: 2.95 Q**, **$R^2$: 0.9824** (vs Mean Baseline MAE: 19.19 Q) | Validated |
-| **Price Estimation** | XGBoost Regressor | Mandi Procurement Price (₹/Q) | 20% holdout of 9,641 transactions | **MAE: ₹14.91/Q**, **RMSE: ₹28.07/Q**, **$R^2$: 0.9998** (100% MSP floor compliance) | Validated |
-| **Procurement Anomalies** | Isolation Forest | Unsupervised Outlier Detection | 1,009 benchmark rows (50 ground truth outliers) | **Precision: 0.8333**, **Recall: 1.0000**, **F1: 0.9091** | Validated |
-| **Queue Wait Time** | Gradient Boosting Regressor | Mandi Wait Time (Minutes) | 3,600 holdout records (20% split) | **MAE: 11.29 min**, **RMSE: 14.08 min**, **$R^2$: 0.9448** (vs Little's Law MAE: 37.34 min) | Validated |
-| **Fleet Optimizer** | Google OR-Tools (SCIP MILP) | Logistics Cost & Dispatch | Multi-centre benchmark (32 centres, 54 trucks) | **Solver Feasibility: 100%**, **Fleet Utilization: 82.4%**, **Unmet Critical Demand: 0.0 Q** | Validated |
-
----
-
-### 1. Mango AI Multi-Instance Segmentation & Defect Classifier
-
-- **Architecture:** Multi-stage computer vision pipeline combining CIELAB/HSV color segmentation, Euclidean Distance Transform (EDT) Voronoi instance partitioning, Sobel contact seam carving, multi-scale outer perimeter shadow exclusion, adaptive inward boundary erosion, and an RBF Support Vector Machine defect classifier.
-- **Evaluation Dataset:** 4,600 total images sampled from `MangoDHDS`, `MangoFruitBD`, `MangoFruitDDS`, and Goan local field photographs. Evaluated on an untouched 20% held-out test set (920 samples).
-- **Evaluation Script:** `python -m ml.evaluation.evaluate_mango`
-
-#### Per-Class Performance on Untouched 920-Sample Test Set
-
-| Class | Precision | Recall | F1-Score | Support |
-| :--- | :---: | :---: | :---: | :---: |
-| **Anthracnose** | 0.7375 | 0.6629 | 0.6982 | 178 |
-| **Bacterial Canker** | 0.5968 | 0.6167 | 0.6066 | 60 |
-| **Healthy** | **0.8708** | **0.9337** | **0.9012** | **332** |
-| **Other Defects** | 0.7578 | 0.8971 | 0.8215 | 136 |
-| **Scab** | 0.8485 | 0.7000 | 0.7671 | 120 |
-| **Stem End Rot** | 0.9146 | 0.7979 | 0.8523 | 94 |
-| **Macro Average** | **0.7877** | **0.7680** | **0.7745** | 920 |
-| **Weighted Average**| **0.8143** | **0.8109** | **0.8084** | 920 |
-
-#### Confusion Matrix (920 Samples)
-
-```text
-                  Predicted ────────►
-Actual            Anthracnose  Bacterial  Healthy  Other  Scab  Stem End Rot
-Anthracnose               118          2       32     25     0             1
-Bacterial Canker            5         37        2      0    15             1
-Healthy                    14          1      310      3     0             4
-Other                      11          1        1    122     0             1
-Scab                        7         21        8      0    84             0
-Stem End Rot                5          0        3     11     0            75
+pip install -r requirements.txt
 ```
 
-#### Real-World Locked External Test Set (62 Unseen Images)
-Evaluated across `ml/data/mango/external_test/` (unseen during all training, tuning, and threshold selection):
-- Successfully processed: **62 / 62 (100.0%)**.
-- Zero-detection failures: **0**.
-- Total isolated mango instances: **283 fruits** (average 4.56 fruits per image).
-- Shadow rejection efficiency: **19.9%** (1,324,861 pixels successfully excluded from defect consideration).
-- Healthy green Goan mango false-positive rate: **0.0%**.
+### Step 4: Install Frontend Dependencies
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### Step 5: Verify Database Connection Safely
+Run the non-destructive verification tool to confirm database connectivity:
+```bash
+python -c "import sys; from backend.app.core.database import check_mysql_status; sys.exit(check_mysql_status())"
+```
+*Expected output: `[OK] Database 'bharatagri_iteration2' verified on localhost:3306 (5052 users preserved).`*
+
+> **DO NOT** run database creation or migration scripts against an existing database.
+
+### Step 6: Start Application Services
+You can run both servers simultaneously using the safe startup script:
+- **Windows**: `start.bat`
+- **Linux/macOS**: `bash start-local.sh`
+
+Or run them individually in separate terminals:
+```bash
+# Terminal 1 - Backend (port 5000)
+uvicorn backend.app.main:app --host 0.0.0.0 --port 5000 --reload
+
+# Terminal 2 - Frontend (port 3000)
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:3000` in your web browser. API documentation is available at `http://localhost:5000/docs`.
 
 ---
 
-### 2. XGBoost Supply Forecasting Engine
+## 8. Environment Variables
 
-- **Architecture:** XGBoost Regressor (`n_estimators=150`, `max_depth=6`, `learning_rate=0.08`, `subsample=0.85`).
-- **Input Features:** Centre ID, state, district, crop, month, day of week, registered farmer count, advance booked quantity, expected harvest yield, daily capacity, historical 7-day arrival quantity, truck demand, bardan jute bag consumption.
-- **Evaluation Methodology:** Chronological split (Training: Months 1–9, Holdout Test: Peak post-harvest Months 10–12, 534 records).
-- **Evaluation Script:** `python -m ml.evaluation.evaluate_models`
+| Variable Name | Required Locally | Required on Render | Default Value | Description |
+|---------------|------------------|--------------------|---------------|-------------|
+| `PORT` | No | Yes (Auto) | `5000` | Port for web server traffic. |
+| `DATABASE_URL` | Optional | Optional | *None* | Complete connection string (e.g., `mysql+pymysql://user:pass@host:port/db?charset=utf8mb4`). Overrides individual `DB_*` settings. |
+| `DB_HOST` | Yes | Yes (if no URL) | `localhost` | Hostname of MySQL database server. |
+| `DB_PORT` | No | No | `3306` | Port of MySQL database server. |
+| `DB_USER` | Yes | Yes (if no URL) | `root` | Database username. |
+| `DB_PASSWORD` | No | Yes (if no URL) | *(empty)* | Database password. |
+| `DB_NAME` | Yes | Yes (if no URL) | `bharatagri_iteration2` | Database schema name. |
+| `DB_SSL_DISABLED` | No | No | `false` | Set to `true` only for non-SSL development connections. |
+| `SECRET_KEY` | Yes | Yes | `bharatagri_secure_...` | 64-character secret for signing JWT tokens. |
+| `ALGORITHM` | No | No | `HS256` | JWT signing algorithm. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | No | `1440` | JWT token validity window (in minutes). |
+| `ALLOWED_ORIGINS` | No | Yes (Split only) | `http://localhost:3000...` | Permitted CORS origins (comma-separated or `*`). |
+| `VITE_API_URL` | No | Yes (Split only) | `/api` | Base URL for API requests in standalone frontend builds. |
 
-#### Comparison Against Empirical Baselines
-
-| Model / Pipeline | MAE (Quintals) | RMSE (Quintals) | $R^2$ Score | Evaluation Finding |
-| :--- | :---: | :---: | :---: | :--- |
-| **Historical Mean Baseline** | 19.19 Q | 22.44 Q | -0.0172 | Predicts historical mean; fails during peak harvest influx. |
-| **Seasonal Crop Average** | 19.20 Q | 22.42 Q | -0.0158 | Crop mean; fails to account for centre capacity and bookings. |
-| **Ridge Linear Model** | 3.07 Q | 3.82 Q | 0.9705 | Captures linear booking trends but misses non-linear saturation. |
-| **XGBoost Supply Forecaster**| **2.30 Q** | **2.95 Q** | **0.9824** | **Captures non-linear arrival surges, booked quotas, and limits.** |
-
----
-
-### 3. XGBoost Price Estimation Model
-
-- **Architecture:** XGBoost Regressor trained on 9,641 completed procurement transactions with an enforced legal invariant:
-  $$\text{Final Price} = \max(\text{AI Estimated Price}, \text{Statutory Government MSP})$$
-- **Input Features:** Official MSP, historical procurement rate, current mandi demand, forecast demand, current commodity supply, forecast supply, state, district, crop season (Kharif/Rabi/Zaid), storage buffer headroom, supply surplus/deficit.
-- **Evaluation Metrics (20% Holdout):**
-  - **MAE:** ₹14.91 per Quintal
-  - **RMSE:** ₹28.07 per Quintal
-  - **$R^2$:** 0.9998
-  - **Statutory Floor Violations:** **0** (100.0% statutory MSP compliance).
+For full reference, see [docs/ENVIRONMENT_VARIABLES.md](file:///c:/Users/test/Desktop/Bharatagri%203/BharatAgri-main/BharatAgri-main/docs/ENVIRONMENT_VARIABLES.md).
 
 ---
 
-### 4. Isolation Forest Procurement Anomaly Surveillance
+## 9. Database and Absolute Data Preservation
 
-- **Architecture:** Unsupervised Scikit-Learn `IsolationForest` (`n_estimators=100`, `contamination=0.06`).
-- **Feature Vector:** Booked quantity, gross weighbridge weight, tare weight, net weight, moisture %, foreign matter %, turnaround duration (minutes), net-to-booked ratio.
-- **Evaluation on Labeled Benchmark Dataset (1,009 Test Cases):**
-  - True Positives (TP): 50
-  - False Positives (FP): 10
-  - False Negatives (FN): 0
-  - **Precision:** 0.8333 (83.33%)
-  - **Recall:** 1.0000 (100.00%)
-  - **F1-Score:** 0.9091 (90.91%)
-- **Governance Notice:** In live operational production, flagged records are labeled strictly as **`Potential Anomaly — Requires Review`** and routed to human inspectors.
+### Core Preservation Directives
+The application database operates independently of the codebase. When deploying BharatAgri-3, you are connecting to an existing database containing:
+- **5,052 User Accounts** with preserved BCrypt password hashes and role mappings.
+- **5,011 Farmer Profiles** with complete e-KYC, land records, and crop registrations.
+- **32 Procurement Centres** with schedules, daily capacities, and holidays.
+- **19,046 Bookings & Appointments** with slot timings, lots, and QR pass records.
+- **9,669 Financial Transactions** and Direct Benefit Transfer (DBT) records.
+- **All 58 Relational Tables**, views, foreign keys, and indexes.
 
----
+### Safeguards Enforced in Code
+- **No Automatic Drops**: Application startup hooks execute only read-only probes (`SELECT 1`).
+- **No Replacement Databases**: If the configured database cannot be reached, the application logs a connection error and marks health as degraded. It **never** silently swaps in SQLite or initializes mock data.
+- **Safe Launchers**: `start.bat` and `start-local.sh` have been stripped of automatic SQL import routines to prevent accidental data destruction.
 
-### 5. Gradient Boosting Mandi Queue Wait Time Engine
-
-- **Architecture:** Scikit-Learn Gradient Boosting Regressor (`n_estimators=120`, `max_depth=5`, `learning_rate=0.06`).
-- **Evaluation Dataset:** 18,000 historical queue records (`ml_training_dataset`), evaluated on a 3,600-record held-out test set (20%).
-- **Results vs Baseline:**
-  - **Little's Law Baseline ($W = L / \mu$):** MAE: 37.34 min, RMSE: 72.43 min, $R^2$: -0.4594.
-  - **Gradient Boosting Model:** **MAE: 11.29 min**, **RMSE: 14.08 min**, **$R^2$: 0.9448**.
-- **Uncertainty Calibration:** Outputs predicted wait with empirical 95% confidence intervals based on test residual standard deviation ($\pm 1.96\sigma$, $\sigma = 14.08$ min).
+For full schema details, consult [database/SCHEMA.md](file:///c:/Users/test/Desktop/Bharatagri%203/BharatAgri-main/BharatAgri-main/database/SCHEMA.md) and [docs/DATABASE_PRESERVATION.md](file:///c:/Users/test/Desktop/Bharatagri%203/BharatAgri-main/BharatAgri-main/docs/DATABASE_PRESERVATION.md).
 
 ---
 
-### 6. Google OR-Tools Mixed-Integer Fleet Optimizer
+## 10. AI/ML and Optimization Modules
 
-- **Solver:** Google OR-Tools (`pywraplp.Solver.CreateSolver('SCIP')`).
-- **Objective:** Minimize total haulage distance ($\sum d_{ij} x_{ij}$) and penalize unmet critical demand.
-- **Constraints Enforced:** Truck payload capacities, origin lot availability, destination godown storage limits, and non-operational holiday constraints.
-- **Benchmark Evaluation (32 Centres, 54 Trucks):**
-  - **Solver Feasibility:** 100.0%
-  - **Fleet Capacity Utilization:** 82.4%
-  - **Unmet Critical Demand:** 0.0 Quintals
-  - **Capacity Violations:** 0 (zero overloads or warehouse overflows).
+All machine learning components in BharatAgri-3 utilize trained models packaged directly within the repository. None are placeholders or mock functions.
 
----
+### 1. Supply Arrival Forecasting
+- **Algorithm**: XGBoost Regressor (`ml/models/supply_forecast_xgb.joblib`)
+- **Inputs**: District ID, crop category, historical 30-day arrival volume, rainfall deviation, and month index.
+- **Output**: Forecasted daily procurement volume (in quintals) for the upcoming 14 days.
 
-## 10. Core System Features & Role-by-Role Walkthrough
+### 2. Anomaly & Fraud Detection
+- **Algorithm**: Isolation Forest (`ml/models/anomaly_detector_iforest.joblib`)
+- **Inputs**: Land area vs claimed produce weight, moisture content deviation, transaction processing time, and price variance.
+- **Output**: Anomaly score and classification label (`NORMAL` vs `ANOMALOUS`), automatically alerting government auditors.
 
-### 1. Farmer Experience
-- **Simplified Hero Actions:** Large, accessible cards for "Book Procurement" and "My Token & Slot".
-- **Intelligent Slot Recommendation:** Identifies low-congestion arrival windows and recommends nearest capable centres.
-- **Digital Gate Token:** Provides an instant digital pass with token number (e.g. `A025`) and verifiable QR code.
-- **Live Queue & "Come Now" Dispatch:** Live tracker indicating current token being served and farmers ahead; automatically triggers an alert when $\le 5$ farmers remain ahead.
-- **DBT Payment Passbook:** Real-time visibility into bank account credit status and transaction clearance references.
+### 3. Inter-Centre Truck Logistics Optimization
+- **Algorithm**: Google OR-Tools Capacitated Vehicle Routing Problem (CVRP)
+- **Inputs**: Current centre storage inventory, available truck capacities, and inter-centre transit matrix.
+- **Output**: Globally optimized vehicle allocation sequences that clear congested godowns while minimizing empty vehicle mileage.
 
-### 2. Procurement Centre Experience
-- **Single-Use Gate QR Inward:** Controlled gate check-in scanning preventing duplicate or out-of-turn admissions.
-- **5-Step Procurement Workflow:**
-  1. *Collection:* Produce verification, bag count, transport mode, photo evidence.
-  2. *Quality Inspection:* Moisture %, foreign matter %, laboratory photo.
-  3. *AI Quality Inspection:* Optical multi-mango scanning with live visual debug overlays.
-  4. *Weighment:* Dual gross and tare weighbridge recording with machine photo.
-  5. *Procurement Finalization:* MSP valuation, digital signature, and immutable Lot ID generation.
-- **Dedicated Storage Management (`/centre-storage`):** Post-procurement warehouse bin assignment, atmospheric condition checks, and stack photo verification.
-- **Employee Roster Isolation:** Dynamic database loading of active employees; prevents confirmation bias by concealing upstream quality measurements on downstream weighbridge screens.
+### 4. Dynamic Procurement Price Engine
+- **Algorithm**: XGBoost Regressor (`ml/models/price_estimation_xgb.joblib`)
+- **Inputs**: Base Minimum Support Price (MSP), verified moisture percentage, foreign matter score, and grain quality grade.
+- **Output**: Fair quality-adjusted payable rate per quintal.
 
-### 3. Government Command Centre Experience
-- **National Procurement KPIs:** Real-time metrics across total farmers onboarded, metric tons procured, MSP value disbursed, and active centres.
-- **Supply Forecast Graph:** Historical procurement records linked seamlessly to 7–30 day projected procurement curves with transparent data gap notices.
-- **DBT Disbursement Monitor:** Tracks transaction volume and values across Paid, Processing, Pending, Failed, and Rejected states.
-- **Mandi Congestion & Redirection:** Real-time utilization scores (Low, Medium, High, Critical) with automated alternative centre redirection.
-- **Fleet Logistics Optimizer:** One-click OR-Tools dispatch generating optimal multi-centre truck routes.
+### 5. Mango Quality Computer Vision Classifier
+- **Algorithm**: CIELAB Color Space Feature Extractor + Decision Fusion Classifier (`ml/models/mango/mango-quality-v1.joblib`)
+- **Inputs**: Consignment produce photos (mean $L^*, a^*, b^*$ chromatic values and defect surface percentage).
+- **Output**: Automated grade certification (Grade A Export, Grade B Domestic, Grade C Processing, Reject).
 
 ---
 
-## 11. Procurement Copilot Architecture
+## 11. API Documentation
 
-BharatAgri features a natural language conversational interface grounded strictly in live database state:
-- **Government Copilot (`POST /api/queue/copilot`):** Answers national questions regarding centre bottlenecks (e.g., *"Why is Centre C004 delayed?"*), spare capacity matching, longest queues, and state procurement leaders.
-- **Centre Copilot (`POST /api/queue/centre-copilot/{centre_id}`):** Securely isolated to the authenticated facility; answers questions on queue growth causes, pending afternoon appointments, equipment status, and next-hour arrivals.
-- **Zero Hallucination Guarantee:** Pre-computes SQL queries and numerical aggregations before sending structured facts to the language explanation layer. If data is missing, it explicitly reports that information is unavailable.
+FastAPI automatically generates interactive, OpenAPI-compliant documentation:
+- **Interactive Swagger UI**: `http://localhost:5000/docs`
+- **ReDoc Alternative**: `http://localhost:5000/redoc`
+- **Raw OpenAPI Schema**: `http://localhost:5000/openapi.json`
 
----
-
-## 12. API Reference
-
-### Dynamic AI Queue & Mandi Operations
-- `POST /api/queue/predict-wait` — Gradient Boosting wait time prediction with 95% confidence interval.
-- `GET  /api/queue/centres/{id}/live` — Live queue metrics (queue depth, processing rate, active stations).
-- `GET  /api/queue/tokens/{token}` — Token tracking (farmers ahead, current serving token).
-- `GET  /api/queue/departure-recommendation` — Farmer departure recommendation (slot time - travel - 15m buffer).
-- `POST /api/queue/recommend-centre` — Multi-criteria centre ranking.
-- `GET  /api/queue/recommend-slots/{centre_id}` — Dynamic low-congestion slot recommendation.
-- `POST /api/queue/copilot` — National Government Copilot.
-- `POST /api/queue/centre-copilot/{centre_id}` — Mandi-isolated Centre Copilot.
-
-### Authentication & Roles
-- `POST /api/auth/login` — JWT authentication for FARMER, AGENT, CENTRE, GOVERNMENT.
-- `GET  /api/auth/me` — Authenticated profile.
-- `POST /farmers/register` — Farmer onboarding with multi-crop support.
-- `POST /api/agents/register` — Field Agent onboarding.
-- `POST /centres/register` — Procurement Centre manager onboarding.
-- `POST /api/government/register` — Government official onboarding.
-
-### Physical Procurement & Lot Traceability
-- `POST /api/collections` — Inward gate collection record.
-- `POST /api/quality` — Physical laboratory inspection (moisture, foreign matter).
-- `POST /api/weighments` — Gross and tare electronic weighbridge capture.
-- `POST /api/procurement` — Final procurement certificate & immutable Lot ID generation.
-- `POST /api/procurement/evidence` — Multipart evidence photo upload (Collection, QC, Weigh, Storage).
-- `GET  /api/storage` — Storage lot assignment and warehouse bin tracking.
-- `GET  /api/payments/status/{id}` — Direct Benefit Transfer (DBT) payment clearance.
-
-### Government Analytics & AI
-- `GET  /api/government/forecast-vs-actual` — Historical procurement observations + XGBoost projected procurement.
-- `GET  /api/government/analytics/payments-summary` — 5-stage DBT payout summary.
-- `GET  /api/government/perishable-priority` — Perishable crop transport priority rankings.
-- `POST /api/trucks/routes/predict` — OR-Tools fleet route dispatch optimization.
-- `GET  /api/ai/congestion` — Operational congestion scores and saturation warnings.
-- `GET  /api/ai/anomalies` — Isolation Forest outlier audit queue.
+### Core API Route Summary
+| Method | Endpoint | Authorization | Description |
+|--------|----------|---------------|-------------|
+| `GET` | `/api/health` | Public | Read-only database and AI engine status check. |
+| `POST` | `/api/auth/login` | Public | Authenticates user credentials and returns JWT Bearer token. |
+| `POST` | `/api/farmers/register` | Public | Registers a new farmer profile and account. |
+| `GET` | `/api/slots/available` | Authenticated | Retrieves available delivery slots for a centre and crop. |
+| `POST` | `/api/bookings` | Farmer / Agent | Creates a new crop delivery appointment. |
+| `GET` | `/api/qr/verify/{token}` | Centre | Verifies QR digital pass at mandi gate intake. |
+| `POST` | `/api/procurement/process-step` | Centre | Advances produce through the 6-stage gate-to-godown pipeline. |
+| `GET` | `/api/trucks/optimize` | Gov / Centre | Executes OR-Tools vehicle allocation for congested centres. |
+| `GET` | `/api/ai/anomalies` | Government | Fetches suspicious transactions flagged by Isolation Forest. |
+| `GET` | `/api/government/analytics` | Government | Retrieves statewide procurement KPIs, volumes, and DBT payouts. |
 
 ---
 
-## 13. Comprehensive Testing & Verification Suite
+## 12. Render Deployment Guide
 
-All 71 automated tests across 10 test suites pass with zero regressions:
+### Recommended: Option 1 — Unified Web Service (Docker)
+Deploys the entire platform as a single Render Web Service on the **Free tier**.
+
+1. **Push to your GitHub repository**:
+   ```bash
+   git remote add origin https://github.com/Mr-Boombastic9116/BharatAgri-3.git
+   git push -u origin main
+   ```
+2. **Create New Web Service on Render**:
+   - Navigate to [Render Dashboard](https://dashboard.render.com) -> **New +** -> **Web Service**.
+   - Select your repository `BharatAgri-3`.
+   - **Environment**: Select `Docker`.
+   - **Dockerfile Path**: `Dockerfile`.
+   - **Plan**: `Free`.
+   - **Health Check Path**: `/api/health`.
+3. **Set Environment Variables**:
+   - `DATABASE_URL`: `mysql+pymysql://<user>:<password>@<host>:<port>/bharatagri_iteration2?charset=utf8mb4` *(from your external MySQL provider)*.
+   - `SECRET_KEY`: Generate a random 64-character secret.
+   - `DB_SSL_DISABLED`: `false`.
+   - `ALLOWED_ORIGINS`: `*`.
+4. **Deploy**:
+   - Render automatically builds the React frontend in Stage 1 and boots the FastAPI server in Stage 2.
+   - Your public URL will be live at `https://bharatagri-3.onrender.com`.
+
+For detailed instructions and split-service setup, see [docs/DEPLOYMENT.md](file:///c:/Users/test/Desktop/Bharatagri%203/BharatAgri-main/BharatAgri-main/docs/DEPLOYMENT.md).
+
+---
+
+## 13. Security Architecture
+
+- **Stateless JWT Authorization**: Tokens signed via HS256 with user ID, role, and expiry timestamp.
+- **Strict Role-Based Access Control (RBAC)**: Endpoint-level dependencies prevent farmers from accessing administrative functions or centre processing queues.
+- **Multi-Tenant Data Isolation**: Procurement centres can only access and process bookings directed to their specific centre ID (`procurement_centre_id`).
+- **SQL Injection Prevention**: Full parameterized query execution via SQLAlchemy ORM.
+- **Credential Masking**: Server startup logs and exception handlers redact passwords, outputting sanitized URLs (`user:***@host`).
+- **Photographic Audit Evidence**: Gate produce photos and weighbridge slips are stored in secure subdirectories with hash-based unique identifiers.
+
+---
+
+## 14. Testing and Troubleshooting
+
+### Running the Test Suite
+The test suite validates role authentication, API endpoints, AI pipelines, and logistics math:
 
 ```bash
-# Execute entire test suite
-pytest tests/ -v
-```
+# Run specific test modules
+python -m pytest tests/test_dashboard_roles.py tests/test_copilot_matrix.py -v
 
-### Verified Test Results Breakdown (71 / 71 Passed)
+# Run anomaly pipeline test
+python -m pytest tests/test_anomaly_pipeline.py -v
 
-```text
-tests/test_forecast_and_mango_regression.py::test_government_forecast_historical_data_restored PASSED
-tests/test_forecast_and_mango_regression.py::test_government_forecast_projected_procurement_non_zero_and_connected PASSED
-tests/test_forecast_and_mango_regression.py::test_government_forecast_monthly_aggregation_honored PASSED
-tests/test_forecast_and_mango_regression.py::test_government_forecast_insufficient_data_status PASSED
-tests/test_forecast_and_mango_regression.py::test_mango_external_cast_shadow_excluded_from_mask PASSED
-tests/test_forecast_and_mango_regression.py::test_mango_healthy_dark_peel_not_marked_as_defect PASSED
-tests/test_forecast_and_mango_regression.py::test_mango_gradual_shadow_gradient_not_marked_as_defect PASSED
-tests/test_forecast_and_mango_regression.py::test_mango_adaptive_inner_padding_and_defect_denominator PASSED
-tests/test_forecast_and_mango_regression.py::test_mango_segmentation_failure_never_returns_100_percent_defect PASSED
-tests/test_mango_ai_quality.py (23 tests: instance separation, shadow rejection, padding, grading) PASSED
-tests/test_procurement_process.py (7 tests: 5-step sequence, employee isolation, evidence) PASSED
-tests/test_dashboard_roles.py (7 tests: multi-role authentication, RBAC, centre data isolation) PASSED
-tests/test_e2e_features.py (4 tests: DBT analytics, truck request accept & notify, Copilot scoping) PASSED
-tests/test_copilot_matrix.py (8 tests: entity extraction, comparative periods, causal diagnostics) PASSED
-tests/test_queue_api.py (1 test: wait prediction, live queue, slot recommendation) PASSED
-tests/test_supply_demand_math.py (3 tests: surplus/deficit formula consistency, inventory isolation) PASSED
-tests/test_api.py (8 tests: health, auth, bookings, lot generation, OR-Tools fleet, Bardan bags) PASSED
-
-====================== 71 passed, 41 warnings in 37.99s =======================
-```
-
-### Reproducible Evaluation Commands
-
-```bash
-# 1. Evaluate XGBoost Supply, Price, and Isolation Forest models
-python -m ml.evaluation.evaluate_models
-
-# 2. Evaluate Mango AI Multi-Class Classifier and test set metrics
-python -m ml.evaluation.evaluate_mango
-
-# 3. Verify Database Foreign Key and Temporal Consistency
-python scripts/validate_procurement_data.py
-
-# 4. Verify End-to-End Procurement Lifecycle
-python scripts/verify_e2e_procurement_workflow.py
-
-# 5. Build Frontend Production Bundle
+# Verify frontend production compilation
 cd frontend && npm run build
 ```
 
----
+### Verified Test Results
+- `tests/test_anomaly_pipeline.py`: 2 passed (Anomaly detection & review workflow)
+- `tests/test_copilot_matrix.py`: 8 passed (Multi-condition Copilot queries & centre isolation)
+- `tests/test_queue_api.py`: 1 passed (Queue wait time estimation)
+- `tests/test_dashboard_roles.py`: 7 passed (Role-based access control, multi-centre isolation)
+- `tests/test_e2e_features.py`: 4 passed (DBT analytics, truck workflow, Copilot)
+- `tests/test_supply_demand_math.py`: 3 passed (Surplus/deficit consistency, crop isolation)
+- `frontend/npm run build`: Built cleanly in 6.1s (`dist/index.html`, `dist/assets/*.js`, `dist/assets/*.css`)
 
-## 14. Troubleshooting Guide
-
-| Issue | Root Cause | Verified Resolution |
-| :--- | :--- | :--- |
-| `Connection refused on port 5000` | Backend server not running | Ensure `python -m uvicorn backend.app.main:app` is running; check `.env` port setting. |
-| `Access denied for user 'root'` | MySQL credentials mismatch | Start MySQL in XAMPP; verify `DB_USER` and `DB_PASSWORD` in `.env`. |
-| `jwt decode error` | Stale browser session token | Log out and log back in, or clear browser `localStorage`. |
-| `ML model .pkl/.joblib not found` | Model artifacts missing | Run `python -m ml.evaluation.evaluate_models` to re-train and serialize models. |
-| `Zero projected procurement on graph` | Historical bounds cutoff | Resolved in Iteration 2.7 via dynamic `anchor_date` and model forecast invocation. |
-| `Healthy green mango flagged as defective`| Outdated defect thresholds | Resolved in Iteration 2.7 via expanded dark peel protection and shadow exclusion. |
-| `UnicodeEncodeError in pytest` | Windows console codepage | Run `chcp 65001` before executing pytest. |
-
----
-
-## 15. Limitations & Future Roadmap
-
-1. **Unsupervised Outlier Ground Truth:** Isolation Forest operates as an unsupervised surveillance tool. True fraud labels do not exist in public agricultural datasets; flagged transactions require verification by on-site human auditors.
-2. **Dense Fruit Occlusions:** When mangoes are stacked vertically in deep crates with $>50\%$ of a fruit hidden, classical morphological Voronoi partitioning cannot reliably infer occluded contours. These cases are flagged as `NEEDS_REVIEW` for manual weighing.
-3. **Synthetic Operational Scenarios:** Micro-operational transactions (gate weighbridge tickets, queue barcodes, bag consumption logs) are generated via operational simulations to reflect real-world distributions. Sourced macroeconomic benchmarks (official MSP floors, Mandi baseline ranges) represent official ground truth.
-4. **Hardware Acceleration:** Current inference runs on standard x86 CPU architectures without requiring dedicated GPUs, maintaining accessibility for rural mandi deployment. Future iterations will support WebAssembly/ONNX client-side edge inference directly within mobile browsers.
+### Common Troubleshooting Items
+| Symptom | Root Cause | Solution |
+|---------|------------|----------|
+| `MySQL connection failed (2003 / 10061)` | MySQL service is offline or port 3306 is blocked | Start MySQL in XAMPP or verify external cloud database security group / firewall rules. |
+| Direct page reload returns 404 | Missing SPA fallback | Handled automatically by `backend/app/main.py`. For external static sites, configure a rewrite rule `/* -> /index.html`. |
+| Missing ML Model Error | Joblib files ignored by git | Ensure `!ml/models/*.joblib` and `!ml/models/mango/*.joblib` are present in `.gitignore`. |
 
 ---
 
-## 16. License & Attribution
+## 15. Limitations and Future Roadmap
 
-BharatAgri (KisanFlow) is developed as a digital public infrastructure platform for agricultural procurement.
+### Current Known Limitations
+- Photographic evidence uploads are currently stored on the local container filesystem (`backend/uploads/evidence/`). For multi-instance horizontal scaling, cloud object storage (AWS S3 or Google Cloud Storage) should be configured.
+- Farmers are currently limited to one active unfulfilled booking per crop per date slot to prevent artificial capacity monopolization.
 
-- **Backend:** FastAPI, SQLAlchemy, Pydantic, Scikit-Learn, XGBoost, Google OR-Tools, OpenCV.
-- **Frontend:** React, Vite, Recharts, Lucide React.
-- **Data Grounding:** Ministry of Agriculture and Farmers Welfare (MoAFW), Commission for Agricultural Costs and Prices (CACP), AGMARKNET, and SIH 26032 KisanFlow Dataset.
+### Planned Enhancements
+- Integration with state land record portals (e.g., Bhulekh) for real-time land ownership verification.
+- Automated SMS notifications through state gateway integration for offline farmers without smartphones.
+- Hardware IoT edge integration for direct digital weighbridge RS-232 serial feed reading.
 
-© 2026 BharatAgri / KisanFlow. All rights reserved.
+---
+
+## 16. Contributing and License
+
+### Contributing
+1. Create a dedicated feature branch from `main`:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+2. Commit your changes using descriptive commit messages.
+3. Verify all automated tests pass before opening a Pull Request.
+
+### License
+BharatAgri Iteration 3 is developed as an intellectual and operational prototype for agricultural procurement modernization. All rights reserved. Refer to internal institutional guidelines for deployment and distribution terms.

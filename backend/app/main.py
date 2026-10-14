@@ -33,10 +33,10 @@ logger = logging.getLogger("bharatagri")
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="BharatAgri Iteration 2 - Agricultural Procurement & Intelligence Platform"
+    description="BharatAgri Iteration 3 - Agricultural Procurement & Intelligence Platform"
 )
 
-# CORS Middleware for local development
+# CORS Middleware for local development and Render deployment
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -45,9 +45,16 @@ allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+if settings.ALLOWED_ORIGINS:
+    for o in settings.ALLOWED_ORIGINS.split(","):
+        clean_o = o.strip()
+        if clean_o and clean_o not in allowed_origins:
+            allowed_origins.append(clean_o)
+
+allow_all_origins = "*" in allowed_origins or settings.ALLOWED_ORIGINS == "*"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"] if allow_all_origins else allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -141,16 +148,55 @@ app.include_router(queue_router)
 # Mount uploads directory for photo evidence
 import os
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 uploads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads"))
 os.makedirs(os.path.join(uploads_dir, "evidence"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
+# Frontend SPA and static assets mounting for unified Render single-service deployment
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+assets_dir = os.path.join(frontend_dist, "assets")
 
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend_assets")
+
+@app.get("/")
+async def serve_root():
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {
+        "project": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "status": "online",
+        "api_docs": "/docs"
+    }
+
+@app.get("/{full_path:path}")
+async def serve_spa_fallback(full_path: str):
+    # Never intercept API, uploads, or API docs
+    if full_path.startswith("api/") or full_path == "api":
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "error": {"code": "NOT_FOUND", "message": f"API endpoint '/{full_path}' not found."}}
+        )
+    if full_path.startswith("uploads/") or full_path in ("docs", "redoc", "openapi.json"):
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    target_file = os.path.join(frontend_dist, full_path)
+    if os.path.isfile(target_file):
+        return FileResponse(target_file)
+
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="Page not found")
 
 @app.on_event("startup")
 def startup_event():
     db_ok = check_db_connection()
     if db_ok:
-        logger.info("[Startup] Connected to MySQL database successfully.")
+        logger.info(f"[Startup] Connected to MySQL database successfully ({settings.sanitized_database_url}).")
     else:
-        logger.warning("[Startup] MySQL database connection failed.")
+        logger.warning(f"[Startup] MySQL database connection failed ({settings.sanitized_database_url}).")

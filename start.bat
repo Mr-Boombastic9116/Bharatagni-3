@@ -192,26 +192,11 @@ if "!DB_STATUS!"=="1" (
 if "!DB_STATUS!"=="2" (
     echo.
     echo --------------------------------------------------------
-    echo [WARNING] Database 'bharatagri_iteration2' does not exist in MySQL.
-    echo Attempting automatic creation and import from database\bharatagri_iteration2.sql ...
-    set "MYSQL_CLI="
-    where mysql >nul 2>nul
-    if !errorlevel! equ 0 set "MYSQL_CLI=mysql"
-    if "!MYSQL_CLI!"=="" if exist "C:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=C:\xampp\mysql\bin\mysql.exe"
-    if "!MYSQL_CLI!"=="" if exist "D:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=D:\xampp\mysql\bin\mysql.exe"
-    if "!MYSQL_CLI!"=="" if exist "E:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=E:\xampp\mysql\bin\mysql.exe"
-
-    if defined MYSQL_CLI (
-        "!VENV_PYTHON!" -c "import pymysql; from backend.app.core.config import settings; conn=pymysql.connect(host=settings.DB_HOST, port=settings.DB_PORT, user=settings.DB_USER, password=settings.DB_PASSWORD); cur=conn.cursor(); cur.execute(f'CREATE DATABASE IF NOT EXISTS `{settings.DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'); conn.close()"
-        "!MYSQL_CLI!" -u root bharatagri_iteration2 < "%PROJECT_ROOT%\database\bharatagri_iteration2.sql"
-        if !errorlevel! equ 0 (
-            echo [OK] Database 'bharatagri_iteration2' created and imported successfully!
-        ) else (
-            echo [WARNING] Automatic import failed. Please manually import database\bharatagri_iteration2.sql
-        )
-    ) else (
-        echo [WARNING] mysql CLI client not found. Please manually import database\bharatagri_iteration2.sql
-    )
+    echo [WARNING] Database '%DB_NAME%' was not found on the configured MySQL server.
+    echo           DATA PRESERVATION SAFEGUARD: Automatic database overwriting is DISABLED.
+    echo           Please verify your DB_HOST / DB_PORT / DB_NAME in .env.
+    echo           If this is a completely brand new blank deployment, you may manually import
+    echo           database\bharatagri_iteration2.sql using your database client.
     echo --------------------------------------------------------
     goto DB_CHECK_DONE
 )
@@ -219,25 +204,9 @@ if "!DB_STATUS!"=="2" (
 if "!DB_STATUS!"=="3" (
     echo.
     echo --------------------------------------------------------
-    echo [WARNING] Database exists but tables are missing.
-    set "MYSQL_CLI="
-    where mysql >nul 2>nul
-    if !errorlevel! equ 0 set "MYSQL_CLI=mysql"
-    if "!MYSQL_CLI!"=="" if exist "C:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=C:\xampp\mysql\bin\mysql.exe"
-    if "!MYSQL_CLI!"=="" if exist "D:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=D:\xampp\mysql\bin\mysql.exe"
-    if "!MYSQL_CLI!"=="" if exist "E:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=E:\xampp\mysql\bin\mysql.exe"
-
-    if defined MYSQL_CLI (
-        echo [NOTICE] Importing database\bharatagri_iteration2.sql ...
-        "!MYSQL_CLI!" -u root bharatagri_iteration2 < "%PROJECT_ROOT%\database\bharatagri_iteration2.sql"
-        if !errorlevel! equ 0 (
-            echo [OK] Tables imported successfully.
-        ) else (
-            echo [WARNING] Import failed. Please manually import database\bharatagri_iteration2.sql
-        )
-    ) else (
-        echo [WARNING] Please manually import database\bharatagri_iteration2.sql into MySQL.
-    )
+    echo [WARNING] Database exists but core tables were not detected.
+    echo           DATA PRESERVATION SAFEGUARD: Automatic table drops or overwrites are DISABLED.
+    echo           Please check your database credentials or connect to the intended existing database.
     echo --------------------------------------------------------
     goto DB_CHECK_DONE
 )

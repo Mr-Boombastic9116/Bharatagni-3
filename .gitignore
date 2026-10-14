@@ -5,27 +5,36 @@ __pycache__/
 *.so
 .pytest_cache/
 venv/
+.venv/
 env/
 ENV/
 
 # Node / Frontend
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
-# ML Data & Artifacts (Raw ZIPs preserved, extracts/artifacts ignored)
+# ML Data & Artifacts
 ml/data/mango/extracted/
 ml/data/mango/processed/
 ml/data/mango/splits/
-ml/models/mango/*.joblib
-uploads/
-uploads/mango_inspections/
-uploads/evidence/
+ml/data/mango/raw/MangoFruitBD.zip
 
-# Environment & IDE
+# Ensure trained models are preserved and shipped with the repository
+!ml/models/*.joblib
+!ml/models/mango/*.joblib
+
+# Uploads and temporary evidence
+uploads/mango_inspections/
+backend/uploads/mango_inspections/
+
+# Environment, secrets, and IDE
 .env
+.env.local
+.env.production
 .idea/
 .vscode/
 *.swp
 *.swo
-ml/data/mango/raw/MangoFruitBD.zip
+*.log
