@@ -150,15 +150,11 @@ if not exist "%PROJECT_ROOT%\.env" (
     ) else (
         echo [WARNING] .env.example not found. Creating minimal default .env...
         > "%PROJECT_ROOT%\.env" (
-            echo DB_HOST=localhost
-            echo DB_PORT=3306
-            echo DB_USER=root
-            echo DB_PASSWORD=
-            echo DB_NAME=bharatagri_iteration2
-            echo SECRET_KEY=bharatagri_secure_jwt_secret_key_2026_iteration2
+            echo DB_TYPE=sqlite
+            echo SQLITE_DATABASE_PATH=database/bharatagri.db
+            echo PORT=5000
             echo ALGORITHM=HS256
             echo ACCESS_TOKEN_EXPIRE_MINUTES=1440
-            echo PORT=5000
         )
         echo [OK] Created minimal .env.
     )
@@ -167,10 +163,10 @@ if not exist "%PROJECT_ROOT%\.env" (
 )
 echo.
 
-:: 6. MySQL and Database Check (Non-blocking: warn instead of crashing)
-echo [5/7] Verifying MySQL connection and BharatAgri database...
+:: 6. Database Check (Non-blocking: warn instead of crashing)
+echo [5/7] Verifying database connection and BharatAgri database...
 set "PYTHONPATH=%PROJECT_ROOT%"
-"!VENV_PYTHON!" -c "import sys; from backend.app.core.database import check_mysql_status; sys.exit(check_mysql_status())"
+"!VENV_PYTHON!" -c "import sys; from backend.app.core.database import check_database_status; sys.exit(check_database_status())"
 set "DB_STATUS=!errorlevel!"
 
 if "!DB_STATUS!"=="0" (
